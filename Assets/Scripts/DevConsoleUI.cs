@@ -20,8 +20,37 @@ public class DevConsoleUI : MonoBehaviour
     public ScrapInventory scrapInventory;
     public PlayerCondition playerCondition;
 
+    public static DevConsoleUI Instance;
+
+    public static int LastClosedFrame { get; private set; } = -1;
+
     private readonly List<string> historyLines = new List<string>();
     private const int maxHistoryLines = 100;
+
+    public static bool ConsumeEscape()
+{
+    if (IsConsoleOpen)
+    {
+        if (Instance != null)
+        {
+            Instance.CloseConsole();
+        }
+
+        return true;
+    }
+
+    if (LastClosedFrame == Time.frameCount)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+    void Awake()
+    {
+        Instance = this;
+    }
 
     void Update()
     {
@@ -97,6 +126,7 @@ public class DevConsoleUI : MonoBehaviour
     public void CloseConsole()
     {
         IsConsoleOpen = false;
+        LastClosedFrame = Time.frameCount;
 
         if (consolePanel != null)
         {

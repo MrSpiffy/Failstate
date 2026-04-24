@@ -15,15 +15,20 @@ public class PauseMenuUI : MonoBehaviour
 
     void Update()
 {
-    if (DevConsoleUI.IsConsoleOpen)
-    {
-        return;
-    }
-
     if (Input.GetKeyDown(KeyCode.Escape))
-    {
-        HandleEscapePressed();
-    }
+        {
+            if (DevConsoleUI.ConsumeEscape())
+            {
+                return;
+            }
+
+            HandleEscapePressed();
+        }
+
+        if (DevConsoleUI.IsConsoleOpen)
+        {
+            return;
+        }
 
     if (IsPauseMenuOpen)
     {
