@@ -52,7 +52,7 @@ public class ScrapPickup : MonoBehaviour
 
         float distance = Vector3.Distance(transform.position, player.position);
         bool isInRange = distance <= interactionDistance;
-        bool canInteract = isInRange && !InventoryUI.IsInventoryOpen && !PauseMenuUI.IsPauseMenuOpen && !DevConsoleUI.IsConsoleOpen;
+        bool canInteract = isInRange && UIStateManager.CanInteract();
 
         if (isInRange)
         {

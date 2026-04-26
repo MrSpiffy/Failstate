@@ -6,10 +6,53 @@ public class ScrapInventory : MonoBehaviour
     public int metalScrapCount = 0;
     public int wiringCount = 0;
     public int coreFragmentCount = 0;
+    public int repairKitCount = 0;
+    public int mobilityPatchCount = 0;
+    public int sensorPatchCount = 0;
 
     public TextMeshProUGUI inventoryText;
     public PlayerCondition playerCondition;
     public InputSettings inputSettings;
+
+    public bool CanAfford(int metalCost, int wiringCost, int coreFragmentCost)
+{
+    return metalScrapCount >= metalCost &&
+           wiringCount >= wiringCost &&
+           coreFragmentCount >= coreFragmentCost;
+}
+
+public bool SpendResources(int metalCost, int wiringCost, int coreFragmentCost)
+{
+    if (!CanAfford(metalCost, wiringCost, coreFragmentCost))
+    {
+        return false;
+    }
+
+    metalScrapCount -= metalCost;
+    wiringCount -= wiringCost;
+    coreFragmentCount -= coreFragmentCost;
+    UpdateInventoryText();
+
+    return true;
+}
+
+    public bool TryCraftRepairKit()
+{
+    if (metalScrapCount < 2 || wiringCount < 1)
+    {
+        Debug.Log("Not enough resources to craft Repair Kit.");
+        return false;
+    }
+
+    metalScrapCount -= 2;
+    wiringCount -= 1;
+    repairKitCount += 1;
+
+    UpdateInventoryText();
+    Debug.Log("Crafted 1 Repair Kit.");
+
+    return true;
+}
 
     void Start()
     {
@@ -121,6 +164,9 @@ public class ScrapInventory : MonoBehaviour
             "\nMetal Scrap: " + metalScrapCount +
             "\nWiring: " + wiringCount +
             "\nCore Fragments: " + coreFragmentCount +
+            "\nRepair Kits: " + repairKitCount +
+            "\nMobility Patches: " + mobilityPatchCount +
+            "\nSensor Patches: " + sensorPatchCount +
             "\n\nSystems" +
             "\nCore: " + coreText +
             "\nMobility: " + mobilityText +

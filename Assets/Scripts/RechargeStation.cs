@@ -43,33 +43,33 @@ public class RechargeStation : MonoBehaviour
 
         float distance = Vector3.Distance(transform.position, player.position);
         bool isInRange = distance <= interactionDistance;
-        bool canInteract = isInRange && !InventoryUI.IsInventoryOpen && !PauseMenuUI.IsPauseMenuOpen && !DevConsoleUI.IsConsoleOpen;
+        bool canInteract = isInRange && UIStateManager.CurrentState == UIState.Gameplay;
 
-        if (canInteract)
-        {
-            if (promptUI != null)
-            {
-                promptUI.ShowPrompt("Press " + inputSettings.interactKey + " to recharge", gameObject);
-            }
-
-            if (Input.GetKeyDown(inputSettings.interactKey))
-            {
-                playerCondition.FullyRestoreAllSystems();
-
-                if (scrapInventory != null)
-                {
-                    scrapInventory.UpdateInventoryText();
-                }
-
-                Debug.Log("Player fully recharged.");
-            }
-        }
-        else
+        if (!canInteract)
         {
             if (promptUI != null)
             {
                 promptUI.HidePrompt(gameObject);
             }
+
+            return;
+        }
+
+        if (promptUI != null)
+        {
+            promptUI.ShowPrompt("Press " + inputSettings.interactKey + " to recharge", gameObject);
+        }
+
+        if (Input.GetKeyDown(inputSettings.interactKey))
+        {
+            playerCondition.FullyRestoreAllSystems();
+
+            if (scrapInventory != null)
+            {
+                scrapInventory.UpdateInventoryText();
+            }
+
+            Debug.Log("Player fully recharged.");
         }
     }
 }

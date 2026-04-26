@@ -7,6 +7,10 @@ using UnityEngine.UI;
 public class DevConsoleUI : MonoBehaviour
 {
     public static bool IsConsoleOpen { get; private set; } = false;
+    public static DevConsoleUI Instance;
+    public static int LastClosedFrame { get; private set; } = -1;
+
+    public UIStateManager uiStateManager;
 
     public GameObject consolePanel;
     public TMP_InputField commandInputField;
@@ -15,55 +19,45 @@ public class DevConsoleUI : MonoBehaviour
     public TextMeshProUGUI suggestionText;
     public ScrollRect historyScrollRect;
 
-    public PlayerMovement playerMovement;
-    public CameraFollow cameraFollow;
     public ScrapInventory scrapInventory;
     public PlayerCondition playerCondition;
 
-    public static DevConsoleUI Instance;
-
-    public static int LastClosedFrame { get; private set; } = -1;
-
     private readonly List<string> historyLines = new List<string>();
+    private readonly List<string> currentSuggestions = new List<string>();
+
     private const int maxHistoryLines = 100;
+    private const float suggestionMinWidth = 140f;
+    private const float suggestionMaxWidth = 900f;
+    private const float suggestionHeight = 35f;
 
-    public static bool ConsumeEscape()
-{
-    if (IsConsoleOpen)
-    {
-        if (Instance != null)
-        {
-            Instance.CloseConsole();
-        }
-
-        return true;
-    }
-
-    if (LastClosedFrame == Time.frameCount)
-    {
-        return true;
-    }
-
-    return false;
-}
+    private int selectedSuggestionIndex = 0;
+    private string currentPartial = "";
 
     void Awake()
     {
         Instance = this;
     }
 
+    public static bool ConsumeEscape()
+    {
+        if (IsConsoleOpen)
+        {
+            if (Instance != null) Instance.CloseConsole();
+            return true;
+        }
+
+        return LastClosedFrame == Time.frameCount;
+    }
+
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Slash) && !IsConsoleOpen)
+        if (Input.GetKeyDown(KeyCode.Slash) && UIStateManager.CurrentState == UIState.Gameplay)
         {
             OpenConsole();
             return;
         }
 
-        if (!IsConsoleOpen)
-        {
-            return;
-        }
+        if (!IsConsoleOpen) return;
 
         if (Input.GetKeyDown(KeyCode.Escape))
         {
@@ -71,17 +65,40 @@ public class DevConsoleUI : MonoBehaviour
             return;
         }
 
+        if (Input.GetKeyDown(KeyCode.UpArrow))
+        {
+            MoveSuggestionSelection(-1);
+            return;
+        }
+
+        if (Input.GetKeyDown(KeyCode.DownArrow))
+        {
+            MoveSuggestionSelection(1);
+            return;
+        }
+
+        if (Input.GetKeyDown(KeyCode.Tab))
+        {
+            ApplySelectedSuggestion();
+            return;
+        }
+
         if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
         {
-            string input = commandInputField.text.Trim();
+            string input = commandInputField != null ? commandInputField.text.Trim() : "";
 
             if (!string.IsNullOrWhiteSpace(input))
             {
                 ExecuteCommand(input);
             }
 
-            commandInputField.text = "";
-            commandInputField.ActivateInputField();
+            if (commandInputField != null)
+            {
+                commandInputField.text = "";
+                commandInputField.ActivateInputField();
+            }
+
+            selectedSuggestionIndex = 0;
             UpdateSuggestionUI();
             return;
         }
@@ -93,23 +110,12 @@ public class DevConsoleUI : MonoBehaviour
     {
         IsConsoleOpen = true;
 
-        if (consolePanel != null)
-        {
-            consolePanel.SetActive(true);
-        }
+        if (consolePanel != null) consolePanel.SetActive(true);
 
-        if (playerMovement != null)
+        if (uiStateManager != null)
         {
-            playerMovement.SetCanMove(false);
+            uiStateManager.SetState(UIState.DevConsole);
         }
-
-        if (cameraFollow != null)
-        {
-            cameraFollow.SetCanLook(false);
-        }
-
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
 
         if (commandInputField != null)
         {
@@ -118,6 +124,7 @@ public class DevConsoleUI : MonoBehaviour
             commandInputField.Select();
         }
 
+        selectedSuggestionIndex = 0;
         UpdateHistoryText();
         UpdateSuggestionUI();
         StartCoroutine(ScrollToBottomNextFrame());
@@ -128,23 +135,12 @@ public class DevConsoleUI : MonoBehaviour
         IsConsoleOpen = false;
         LastClosedFrame = Time.frameCount;
 
-        if (consolePanel != null)
-        {
-            consolePanel.SetActive(false);
-        }
+        if (consolePanel != null) consolePanel.SetActive(false);
 
-        if (playerMovement != null)
+        if (uiStateManager != null)
         {
-            playerMovement.SetCanMove(true);
+            uiStateManager.ReturnToGameplay();
         }
-
-        if (cameraFollow != null)
-        {
-            cameraFollow.SetCanLook(true);
-        }
-
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
     }
 
     void UpdateHistoryText()
@@ -181,102 +177,239 @@ public class DevConsoleUI : MonoBehaviour
 
     void UpdateSuggestionUI()
     {
-        if (commandInputField == null || suggestionPanel == null || suggestionText == null)
+        if (commandInputField == null || suggestionPanel == null || suggestionText == null) return;
+
+        BuildSuggestions(commandInputField.text);
+
+        bool hasSuggestions = currentSuggestions.Count > 0;
+        suggestionPanel.SetActive(hasSuggestions);
+
+        if (!hasSuggestions) return;
+
+        selectedSuggestionIndex = Mathf.Clamp(selectedSuggestionIndex, 0, currentSuggestions.Count - 1);
+
+        List<string> visibleSuggestionStrings = new List<string>();
+        float estimatedWidth = 20f;
+
+        for (int i = 0; i < currentSuggestions.Count; i++)
         {
-            return;
+            string rawSuggestion = currentSuggestions[i];
+            string styledSuggestion = StyleSuggestion(rawSuggestion, currentPartial);
+
+            if (i == selectedSuggestionIndex)
+            {
+                styledSuggestion = "<mark=#555555AA>" + styledSuggestion + "</mark>";
+            }
+
+            string separator = visibleSuggestionStrings.Count > 0 ? " <color=#666666>|</color> " : "";
+            string candidate = separator + styledSuggestion;
+
+            float candidateWidth = suggestionText.GetPreferredValues(
+                StripRichTextForWidth(separator + rawSuggestion)
+            ).x;
+
+            if (estimatedWidth + candidateWidth > suggestionMaxWidth && visibleSuggestionStrings.Count > 0)
+            {
+                break;
+            }
+
+            visibleSuggestionStrings.Add(candidate);
+            estimatedWidth += candidateWidth;
         }
 
-        string suggestion = GetSuggestion(commandInputField.text.TrimStart());
-
-        bool hasSuggestion = !string.IsNullOrWhiteSpace(suggestion);
-        suggestionPanel.SetActive(hasSuggestion);
-
-        if (hasSuggestion)
-        {
-            suggestionText.text = suggestion;
-        }
+        suggestionText.text = string.Join("", visibleSuggestionStrings);
+        ResizeSuggestionPanel(estimatedWidth);
     }
 
-    string GetSuggestion(string input)
+    string StripRichTextForWidth(string text)
     {
-        string[] rawParts = input.ToLower().Split(' ');
-        List<string> partsList = new List<string>(rawParts);
+        return text
+            .Replace("<color=#666666>", "")
+            .Replace("<color=#FFFFFF>", "")
+            .Replace("<color=#A0A0A0>", "")
+            .Replace("</color>", "")
+            .Replace("<mark=#555555AA>", "")
+            .Replace("</mark>", "");
+    }
 
-        if (partsList.Count > 0 && partsList[partsList.Count - 1] == "")
-        {
-            partsList.RemoveAt(partsList.Count - 1);
-        }
+    void BuildSuggestions(string input)
+    {
+        string previousSelection =
+            currentSuggestions.Count > 0 && selectedSuggestionIndex < currentSuggestions.Count
+                ? currentSuggestions[selectedSuggestionIndex]
+                : "";
 
-        string[] parts = partsList.ToArray();
+        currentSuggestions.Clear();
+        currentPartial = "";
+
         bool endsWithSpace = input.EndsWith(" ");
+        string[] parts = input.ToLower().Split(' ');
 
         if (string.IsNullOrWhiteSpace(input))
         {
-            return "<color=#A0A0A0>help</color>, <color=#A0A0A0>add</color>, <color=#A0A0A0>set</color>, <color=#A0A0A0>restore</color>";
+            currentPartial = "";
+            AddMatchingSuggestions("", new string[] { "add", "help", "restore", "set" });
         }
-
-        if (parts.Length == 1 && !endsWithSpace)
+        else if (parts.Length == 1 && !endsWithSpace)
         {
-            return BuildStyledSuggestions(parts[0], new string[] { "help", "add", "set", "restore" });
+            currentPartial = parts[0];
+            AddMatchingSuggestions(currentPartial, new string[] { "add", "help", "restore", "set" });
         }
-
-        if (parts.Length >= 1 && parts[0] == "add")
+        else
         {
-            if (parts.Length == 1 && endsWithSpace)
-            {
-                return BuildStyledSuggestions("", new string[] { "metal", "wiring", "corefragments" });
-            }
+            string command = parts[0];
 
-            if (parts.Length == 2 && !endsWithSpace)
+            if (command == "add")
             {
-                return BuildStyledSuggestions(parts[1], new string[] { "metal", "wiring", "corefragments" });
+                if (endsWithSpace && parts.Length == 2)
+                {
+                    currentPartial = "";
+                    AddMatchingSuggestions("", new string[] { "corefragments", "metal", "wiring" });
+                }
+                else if (parts.Length == 2)
+                {
+                    currentPartial = parts[1];
+                    AddMatchingSuggestions(currentPartial, new string[] { "corefragments", "metal", "wiring" });
+                }
+                else if (endsWithSpace && parts.Length == 3)
+                {
+                    currentPartial = "";
+                    AddMatchingSuggestions("", new string[] { "amount" });
+                }
+                else if (parts.Length == 3)
+                {
+                    currentPartial = parts[2];
+                    AddMatchingSuggestions(currentPartial, new string[] { "amount" });
+                }
             }
-
-            if ((parts.Length == 2 && endsWithSpace) || (parts.Length == 3 && !endsWithSpace))
+            else if (command == "set")
             {
-                return "<color=#A0A0A0>amount</color>";
+                if (endsWithSpace && parts.Length == 2)
+                {
+                    currentPartial = "";
+                    AddMatchingSuggestions("", new string[] { "core", "mobility", "perception" });
+                }
+                else if (parts.Length == 2)
+                {
+                    currentPartial = parts[1];
+                    AddMatchingSuggestions(currentPartial, new string[] { "core", "mobility", "perception" });
+                }
+                else if (endsWithSpace && parts.Length == 3)
+                {
+                    currentPartial = "";
+                    AddMatchingSuggestions("", new string[] { "value" });
+                }
+                else if (parts.Length == 3)
+                {
+                    currentPartial = parts[2];
+                    AddMatchingSuggestions(currentPartial, new string[] { "value" });
+                }
             }
         }
 
-        if (parts.Length >= 1 && parts[0] == "set")
-        {
-            if (parts.Length == 1 && endsWithSpace)
-            {
-                return BuildStyledSuggestions("", new string[] { "core", "mobility", "perception" });
-            }
+        currentSuggestions.Sort();
 
-            if (parts.Length == 2 && !endsWithSpace)
-            {
-                return BuildStyledSuggestions(parts[1], new string[] { "core", "mobility", "perception" });
-            }
-
-            if ((parts.Length == 2 && endsWithSpace) || (parts.Length == 3 && !endsWithSpace))
-            {
-                return "<color=#A0A0A0>value</color>";
-            }
-        }
-
-        return "";
+        int restoredIndex = currentSuggestions.IndexOf(previousSelection);
+        selectedSuggestionIndex = restoredIndex >= 0 ? restoredIndex : 0;
     }
 
-    string BuildStyledSuggestions(string partial, string[] options)
+    void AddMatchingSuggestions(string partial, string[] options)
     {
-        List<string> matches = new List<string>();
-
         foreach (string option in options)
         {
             if (option.StartsWith(partial))
             {
-                string typedPart = option.Substring(0, partial.Length);
-                string remainingPart = option.Substring(partial.Length);
+                currentSuggestions.Add(option);
+            }
+        }
+    }
 
-                matches.Add(
-                    "<color=#FFFFFF>" + typedPart + "</color><color=#A0A0A0>" + remainingPart + "</color>"
-                );
+    string StyleSuggestion(string suggestion, string partial)
+    {
+        partial = partial.ToLower();
+
+        if (string.IsNullOrEmpty(partial))
+        {
+            return "<color=#A0A0A0>" + suggestion + "</color>";
+        }
+
+        int typedLength = Mathf.Min(partial.Length, suggestion.Length);
+
+        string typedPart = suggestion.Substring(0, typedLength);
+        string remainingPart = suggestion.Substring(typedLength);
+
+        return "<color=#FFFFFF>" + typedPart + "</color><color=#A0A0A0>" + remainingPart + "</color>";
+    }
+
+    void ResizeSuggestionPanel(float estimatedWidth)
+    {
+        RectTransform panelRect = suggestionPanel.GetComponent<RectTransform>();
+        if (panelRect == null) return;
+
+        float width = Mathf.Clamp(estimatedWidth + 20f, suggestionMinWidth, suggestionMaxWidth);
+
+        panelRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
+        panelRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, suggestionHeight);
+
+        panelRect.anchoredPosition = new Vector2(panelRect.anchoredPosition.x, 60f);
+    }
+
+    void MoveSuggestionSelection(int direction)
+    {
+        if (currentSuggestions.Count == 0) return;
+
+        selectedSuggestionIndex += direction;
+
+        if (selectedSuggestionIndex < 0)
+        {
+            selectedSuggestionIndex = currentSuggestions.Count - 1;
+        }
+        else if (selectedSuggestionIndex >= currentSuggestions.Count)
+        {
+            selectedSuggestionIndex = 0;
+        }
+
+        UpdateSuggestionUI();
+    }
+
+    void ApplySelectedSuggestion()
+    {
+        if (commandInputField == null || currentSuggestions.Count == 0) return;
+
+        string selectedSuggestion = currentSuggestions[selectedSuggestionIndex];
+
+        if (selectedSuggestion == "amount" || selectedSuggestion == "value")
+        {
+            return;
+        }
+
+        string input = commandInputField.text;
+
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            commandInputField.text = selectedSuggestion + " ";
+        }
+        else
+        {
+            bool endsWithSpace = input.EndsWith(" ");
+            string[] parts = input.Split(' ');
+
+            if (endsWithSpace)
+            {
+                commandInputField.text = input + selectedSuggestion + " ";
+            }
+            else
+            {
+                parts[parts.Length - 1] = selectedSuggestion;
+                commandInputField.text = string.Join(" ", parts) + " ";
             }
         }
 
-        return string.Join("\n", matches);
+        commandInputField.caretPosition = commandInputField.text.Length;
+        commandInputField.ActivateInputField();
+
+        selectedSuggestionIndex = 0;
+        UpdateSuggestionUI();
     }
 
     void ExecuteCommand(string input)
@@ -285,10 +418,7 @@ public class DevConsoleUI : MonoBehaviour
 
         string[] parts = input.ToLower().Split(' ');
 
-        if (parts.Length == 0)
-        {
-            return;
-        }
+        if (parts.Length == 0) return;
 
         switch (parts[0])
         {

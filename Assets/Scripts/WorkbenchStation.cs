@@ -1,4 +1,6 @@
 using UnityEngine;
+using TMPro;
+using UnityEngine.EventSystems;
 
 public class WorkbenchStation : MonoBehaviour
 {
@@ -9,6 +11,11 @@ public class WorkbenchStation : MonoBehaviour
     private InteractionPromptUI promptUI;
     private WorkbenchUI workbenchUI;
 
+    bool IsTypingInInputField()
+{
+    return UIStateManager.IsTypingInInputField();
+}
+    
     void Start()
     {
         GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
@@ -46,15 +53,15 @@ public class WorkbenchStation : MonoBehaviour
                 promptUI.HidePrompt(gameObject);
             }
 
-            if (Input.GetKeyDown(inputSettings.interactKey))
-            {
-                workbenchUI.CloseWorkbench();
-            }
+            if (Input.GetKeyDown(inputSettings.interactKey) && !IsTypingInInputField())
+{
+    workbenchUI.CloseWorkbench();
+}
 
             return;
         }
 
-        bool canInteract = isInRange && !InventoryUI.IsInventoryOpen && !PauseMenuUI.IsPauseMenuOpen && !DevConsoleUI.IsConsoleOpen;
+        bool canInteract = isInRange && UIStateManager.CanInteract();
 
         if (canInteract)
         {

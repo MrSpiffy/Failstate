@@ -4,18 +4,18 @@ public class PauseMenuUI : MonoBehaviour
 {
     public static bool IsPauseMenuOpen { get; private set; } = false;
 
+    public UIStateManager uiStateManager;
+
     public GameObject pauseMenuPanel;
     public GameObject pauseMainPage;
     public GameObject pauseSettingsPage;
     public GameObject pauseControlsPage;
 
-    public PlayerMovement playerMovement;
-    public CameraFollow cameraFollow;
     public InteractionPromptUI interactionPromptUI;
 
     void Update()
-{
-    if (Input.GetKeyDown(KeyCode.Escape))
+    {
+        if (Input.GetKeyDown(KeyCode.Escape))
         {
             if (DevConsoleUI.ConsumeEscape())
             {
@@ -25,29 +25,24 @@ public class PauseMenuUI : MonoBehaviour
             HandleEscapePressed();
         }
 
-        if (DevConsoleUI.IsConsoleOpen)
+        if (IsPauseMenuOpen)
         {
-            return;
-        }
+            if (Input.GetKeyDown(KeyCode.Alpha1))
+            {
+                ShowMainPage();
+            }
 
-    if (IsPauseMenuOpen)
-    {
-        if (Input.GetKeyDown(KeyCode.Alpha1))
-        {
-            ShowMainPage();
-        }
+            if (Input.GetKeyDown(KeyCode.Alpha2))
+            {
+                ShowSettingsPage();
+            }
 
-        if (Input.GetKeyDown(KeyCode.Alpha2))
-        {
-            ShowSettingsPage();
-        }
-
-        if (Input.GetKeyDown(KeyCode.Alpha3))
-        {
-            ShowControlsPage();
+            if (Input.GetKeyDown(KeyCode.Alpha3))
+            {
+                ShowControlsPage();
+            }
         }
     }
-}
 
     void HandleEscapePressed()
     {
@@ -77,7 +72,10 @@ public class PauseMenuUI : MonoBehaviour
             return;
         }
 
-        OpenPauseMenu();
+        if (UIStateManager.CurrentState == UIState.Gameplay)
+        {
+            OpenPauseMenu();
+        }
     }
 
     public void OpenPauseMenu()
@@ -91,25 +89,15 @@ public class PauseMenuUI : MonoBehaviour
 
         ShowMainPage();
 
-        if (playerMovement != null)
-        {
-            playerMovement.SetCanMove(false);
-        }
-
-        if (cameraFollow != null)
-        {
-            cameraFollow.SetCanLook(false);
-        }
-
         if (interactionPromptUI != null)
         {
             interactionPromptUI.HideAllPrompts();
         }
 
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
-
-        Time.timeScale = 0f;
+        if (uiStateManager != null)
+        {
+            uiStateManager.SetState(UIState.Pause);
+        }
     }
 
     public void ClosePauseMenu()
@@ -121,20 +109,10 @@ public class PauseMenuUI : MonoBehaviour
             pauseMenuPanel.SetActive(false);
         }
 
-        if (playerMovement != null)
+        if (uiStateManager != null)
         {
-            playerMovement.SetCanMove(true);
+            uiStateManager.ReturnToGameplay();
         }
-
-        if (cameraFollow != null)
-        {
-            cameraFollow.SetCanLook(true);
-        }
-
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
-
-        Time.timeScale = 1f;
     }
 
     public void ShowMainPage()

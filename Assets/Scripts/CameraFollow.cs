@@ -29,9 +29,14 @@ public class CameraFollow : MonoBehaviour
 
         if (canLook)
         {
-            float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
-            xRotation -= mouseY;
-            xRotation = Mathf.Clamp(xRotation, -60f, 60f);
+            float rawMouseY = Input.GetAxis("Mouse Y");
+
+if (Mathf.Abs(rawMouseY) > 0.01f)
+{
+    float mouseY = rawMouseY * mouseSensitivity * Time.deltaTime;
+    xRotation -= mouseY;
+    xRotation = Mathf.Clamp(xRotation, -60f, 60f);
+}
         }
 
         Quaternion baseRotation = Quaternion.Euler(xRotation, target.eulerAngles.y, 0f);
