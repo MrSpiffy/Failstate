@@ -7,7 +7,7 @@ public class InventoryUI : MonoBehaviour
     public static bool IsInventoryOpen { get; private set; } = false;
 
     public GameObject inventoryPanel;
-    public ScrapInventory scrapInventory;
+    public PlayerInventory playerInventory;
     public InputSettings inputSettings;
     public UIStateManager uiStateManager;
     public PlayerCondition playerCondition;
@@ -21,7 +21,35 @@ public class InventoryUI : MonoBehaviour
     public TextMeshProUGUI itemDetailsText;
 
     private readonly List<GameObject> spawnedSlots = new List<GameObject>();
-    private string selectedItemName = "";
+    private ItemType? selectedItemType = null;
+    private string lastFeedbackMessage = "";
+
+    void OnEnable()
+    {
+        if (playerInventory != null)
+        {
+            playerInventory.OnInventoryChanged += HandleInventoryChanged;
+        }
+    }
+
+    void OnDisable()
+    {
+        if (playerInventory != null)
+        {
+            playerInventory.OnInventoryChanged -= HandleInventoryChanged;
+        }
+    }
+
+    void HandleInventoryChanged()
+    {
+        if (!IsInventoryOpen)
+        {
+            return;
+        }
+
+        RefreshInventoryGrid();
+        UpdateItemDetailsText();
+    }
 
     void Update()
     {
@@ -59,7 +87,9 @@ public class InventoryUI : MonoBehaviour
             inventoryPanel.SetActive(true);
         }
 
-        selectedItemName = "";
+        selectedItemType = null;
+        lastFeedbackMessage = "";
+
         RefreshInventoryGrid();
         UpdateSystemStatusText();
         UpdateItemDetailsText();
@@ -85,30 +115,33 @@ public class InventoryUI : MonoBehaviour
         }
     }
 
-    public void SelectItem(string itemName)
+    public void SelectItem(ItemType itemType)
     {
-        selectedItemName = itemName;
+        selectedItemType = itemType;
+        lastFeedbackMessage = "";
+
+        UpdateSlotSelectionVisuals();
         UpdateItemDetailsText();
     }
 
     public void RefreshInventoryGrid()
     {
-        if (scrapInventory == null || itemSlotParent == null || itemSlotPrefab == null)
+        if (playerInventory == null || itemSlotParent == null || itemSlotPrefab == null)
         {
             return;
         }
 
         ClearSlots();
 
-        AddSlot("Metal Scrap", scrapInventory.metalScrapCount);
-        AddSlot("Wiring", scrapInventory.wiringCount);
-        AddSlot("Core Fragments", scrapInventory.coreFragmentCount);
-        AddSlot("Repair Kits", scrapInventory.repairKitCount);
-        AddSlot("Mobility Patches", scrapInventory.mobilityPatchCount);
-        AddSlot("Sensor Patches", scrapInventory.sensorPatchCount);
+        foreach (ItemType itemType in ItemDatabase.GetAllItemTypes())
+        {
+            AddSlot(itemType, playerInventory.GetItemCount(itemType));
+        }
+
+        UpdateSlotSelectionVisuals();
     }
 
-    void AddSlot(string itemName, int count)
+    void AddSlot(ItemType itemType, int count)
     {
         if (count <= 0) return;
 
@@ -119,7 +152,7 @@ public class InventoryUI : MonoBehaviour
 
         if (slotUI != null)
         {
-            slotUI.SetItem(itemName, count, this);
+            slotUI.SetItem(itemType, count, this);
         }
     }
 
@@ -134,6 +167,21 @@ public class InventoryUI : MonoBehaviour
         }
 
         spawnedSlots.Clear();
+    }
+
+    void UpdateSlotSelectionVisuals()
+    {
+        for (int i = 0; i < spawnedSlots.Count; i++)
+        {
+            if (spawnedSlots[i] == null) continue;
+
+            InventoryItemSlotUI slotUI = spawnedSlots[i].GetComponent<InventoryItemSlotUI>();
+
+            if (slotUI != null)
+            {
+                slotUI.SetSelected(selectedItemType.HasValue && slotUI.GetItemType() == selectedItemType.Value);
+            }
+        }
     }
 
     void UpdateSystemStatusText()
@@ -154,7 +202,7 @@ public class InventoryUI : MonoBehaviour
     {
         if (itemDetailsText == null) return;
 
-        if (string.IsNullOrWhiteSpace(selectedItemName))
+        if (!selectedItemType.HasValue)
         {
             itemDetailsText.text =
                 "Item Details\n\n" +
@@ -162,100 +210,36 @@ public class InventoryUI : MonoBehaviour
             return;
         }
 
-        switch (selectedItemName)
+        ItemType itemType = selectedItemType.Value;
+
+        itemDetailsText.text =
+            ItemDatabase.GetDisplayName(itemType) +
+            "\n\n" +
+            ItemDatabase.GetDescription(itemType);
+
+        if (!string.IsNullOrWhiteSpace(lastFeedbackMessage))
         {
-            case "Metal Scrap":
-                itemDetailsText.text =
-                    "Metal Scrap\n\n" +
-                    "Basic structural material.\n\n" +
-                    "Used for crafting and core repairs.\n\n" +
-                    "Found while scavenging.";
-                break;
-
-            case "Wiring":
-                itemDetailsText.text =
-                    "Wiring\n\n" +
-                    "Useful for mobility and electrical repair.\n\n" +
-                    "Used in mobility-related crafting.\n\n" +
-                    "Found in ruined machines.";
-                break;
-
-            case "Core Fragments":
-                itemDetailsText.text =
-                    "Core Fragments\n\n" +
-                    "Rare sensor material.\n\n" +
-                    "Used for perception-related crafting.\n\n" +
-                    "Found in advanced wreckage.";
-                break;
-
-            case "Repair Kits":
-                itemDetailsText.text =
-                    "Repair Kit\n\n" +
-                    "Restores Core integrity by 25.\n\n" +
-                    "Press E to use.";
-                break;
-
-            case "Mobility Patches":
-                itemDetailsText.text =
-                    "Mobility Patch\n\n" +
-                    "Restores Mobility integrity by 25.\n\n" +
-                    "Press E to use.";
-                break;
-
-            case "Sensor Patches":
-                itemDetailsText.text =
-                    "Sensor Patch\n\n" +
-                    "Restores Perception integrity by 25.\n\n" +
-                    "Press E to use.";
-                break;
-
-            default:
-                itemDetailsText.text = selectedItemName;
-                break;
+            itemDetailsText.text += "\n\n" + lastFeedbackMessage;
         }
     }
 
     void UseSelectedItem()
     {
-        if (scrapInventory == null || playerCondition == null) return;
-
-        bool usedItem = false;
-
-        switch (selectedItemName)
+        if (!selectedItemType.HasValue)
         {
-            case "Repair Kits":
-                if (scrapInventory.repairKitCount > 0 && playerCondition.currentCoreIntegrity < playerCondition.maxCoreIntegrity)
-                {
-                    scrapInventory.repairKitCount--;
-                    playerCondition.currentCoreIntegrity = Mathf.Min(playerCondition.maxCoreIntegrity, playerCondition.currentCoreIntegrity + 25f);
-                    usedItem = true;
-                }
-                break;
-
-            case "Mobility Patches":
-                if (scrapInventory.mobilityPatchCount > 0 && playerCondition.currentMobilityIntegrity < playerCondition.maxMobilityIntegrity)
-                {
-                    scrapInventory.mobilityPatchCount--;
-                    playerCondition.currentMobilityIntegrity = Mathf.Min(playerCondition.maxMobilityIntegrity, playerCondition.currentMobilityIntegrity + 25f);
-                    usedItem = true;
-                }
-                break;
-
-            case "Sensor Patches":
-                if (scrapInventory.sensorPatchCount > 0 && playerCondition.currentPerceptionIntegrity < playerCondition.maxPerceptionIntegrity)
-                {
-                    scrapInventory.sensorPatchCount--;
-                    playerCondition.currentPerceptionIntegrity = Mathf.Min(playerCondition.maxPerceptionIntegrity, playerCondition.currentPerceptionIntegrity + 25f);
-                    usedItem = true;
-                }
-                break;
-        }
-
-        if (usedItem)
-        {
-            RefreshInventoryGrid();
-            UpdateSystemStatusText();
+            lastFeedbackMessage = "No item selected.";
             UpdateItemDetailsText();
+            return;
         }
+
+        bool usedItem = ItemUseSystem.TryUseItem(
+            selectedItemType.Value,
+            playerInventory,
+            playerCondition,
+            out lastFeedbackMessage
+        );
+
+        UpdateSystemStatusText();
+        UpdateItemDetailsText();
     }
 }

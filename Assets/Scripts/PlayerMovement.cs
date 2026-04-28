@@ -33,13 +33,13 @@ public class PlayerMovement : MonoBehaviour
 
         movement = transform.right * moveX + transform.forward * moveZ;
 
-        float rawMouseX = Input.GetAxis("Mouse X");
+        float rawMouseX = Input.GetAxisRaw("Mouse X");
 
-if (Mathf.Abs(rawMouseX) > 0.01f)
-{
-    float mouseX = rawMouseX * mouseSensitivity * Time.deltaTime;
-    transform.Rotate(Vector3.up * mouseX);
-}
+        if (Mathf.Abs(rawMouseX) > 0.01f)
+        {
+            float mouseX = rawMouseX * mouseSensitivity * Time.deltaTime;
+            transform.Rotate(Vector3.up * mouseX);
+        }
     }
 
     void FixedUpdate()

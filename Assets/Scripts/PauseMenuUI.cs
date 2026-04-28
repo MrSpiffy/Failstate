@@ -46,6 +46,8 @@ public class PauseMenuUI : MonoBehaviour
 
     void HandleEscapePressed()
     {
+        GameReferences refs = GameReferences.Instance;
+
         if (IsPauseMenuOpen)
         {
             ClosePauseMenu();
@@ -54,21 +56,21 @@ public class PauseMenuUI : MonoBehaviour
 
         if (InventoryUI.IsInventoryOpen)
         {
-            InventoryUI inventoryUI = FindFirstObjectByType<InventoryUI>();
-            if (inventoryUI != null)
+            if (refs != null && refs.inventoryUI != null)
             {
-                inventoryUI.CloseInventory();
+                refs.inventoryUI.CloseInventory();
             }
+
             return;
         }
 
         if (WorkbenchUI.IsWorkbenchOpen)
         {
-            WorkbenchUI workbenchUI = FindFirstObjectByType<WorkbenchUI>();
-            if (workbenchUI != null)
+            if (refs != null && refs.workbenchUI != null)
             {
-                workbenchUI.CloseWorkbench();
+                refs.workbenchUI.CloseWorkbench();
             }
+
             return;
         }
 

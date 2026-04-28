@@ -4,71 +4,37 @@ public class RechargeStation : MonoBehaviour
 {
     public float interactionDistance = 3f;
 
-    private Transform player;
-    private PlayerCondition playerCondition;
-    private InputSettings inputSettings;
-    private ScrapInventory scrapInventory;
-    private InteractionPromptUI promptUI;
-
-    void Start()
-    {
-        GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
-
-        if (playerObject != null)
-        {
-            player = playerObject.transform;
-            playerCondition = playerObject.GetComponent<PlayerCondition>();
-            inputSettings = playerObject.GetComponent<InputSettings>();
-        }
-
-        GameObject gameManager = GameObject.Find("GameManager");
-        if (gameManager != null)
-        {
-            scrapInventory = gameManager.GetComponent<ScrapInventory>();
-        }
-
-        GameObject uiManager = GameObject.Find("UIManager");
-        if (uiManager != null)
-        {
-            promptUI = uiManager.GetComponent<InteractionPromptUI>();
-        }
-    }
-
     void Update()
     {
-        if (player == null || playerCondition == null || inputSettings == null)
+        GameReferences refs = GameReferences.Instance;
+
+        if (refs == null || refs.playerTransform == null || refs.playerCondition == null || refs.inputSettings == null)
         {
             return;
         }
 
-        float distance = Vector3.Distance(transform.position, player.position);
+        float distance = Vector3.Distance(transform.position, refs.playerTransform.position);
         bool isInRange = distance <= interactionDistance;
         bool canInteract = isInRange && UIStateManager.CurrentState == UIState.Gameplay;
 
         if (!canInteract)
         {
-            if (promptUI != null)
+            if (refs.interactionPromptUI != null)
             {
-                promptUI.HidePrompt(gameObject);
+                refs.interactionPromptUI.HidePrompt(gameObject);
             }
 
             return;
         }
 
-        if (promptUI != null)
+        if (refs.interactionPromptUI != null)
         {
-            promptUI.ShowPrompt("Press " + inputSettings.interactKey + " to recharge", gameObject);
+            refs.interactionPromptUI.ShowPrompt("Press " + refs.inputSettings.interactKey + " to recharge", gameObject);
         }
 
-        if (Input.GetKeyDown(inputSettings.interactKey))
+        if (Input.GetKeyDown(refs.inputSettings.interactKey))
         {
-            playerCondition.FullyRestoreAllSystems();
-
-            if (scrapInventory != null)
-            {
-                scrapInventory.UpdateInventoryText();
-            }
-
+            refs.playerCondition.FullyRestoreAllSystems();
             Debug.Log("Player fully recharged.");
         }
     }

@@ -1,62 +1,27 @@
 using UnityEngine;
-using TMPro;
-using UnityEngine.EventSystems;
 
 public class WorkbenchStation : MonoBehaviour
 {
     public float interactionDistance = 3f;
 
-    private Transform player;
-    private InputSettings inputSettings;
-    private InteractionPromptUI promptUI;
-    private WorkbenchUI workbenchUI;
-
-    bool IsTypingInInputField()
-{
-    return UIStateManager.IsTypingInInputField();
-}
-    
-    void Start()
-    {
-        GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
-
-        if (playerObject != null)
-        {
-            player = playerObject.transform;
-            inputSettings = playerObject.GetComponent<InputSettings>();
-        }
-
-        GameObject uiManager = GameObject.Find("UIManager");
-
-        if (uiManager != null)
-        {
-            promptUI = uiManager.GetComponent<InteractionPromptUI>();
-            workbenchUI = uiManager.GetComponent<WorkbenchUI>();
-        }
-    }
-
     void Update()
     {
-        if (player == null || inputSettings == null || workbenchUI == null)
+        GameReferences refs = GameReferences.Instance;
+
+        if (refs == null || refs.playerTransform == null || refs.inputSettings == null || refs.workbenchUI == null)
         {
             return;
         }
 
-        float distance = Vector3.Distance(transform.position, player.position);
+        float distance = Vector3.Distance(transform.position, refs.playerTransform.position);
         bool isInRange = distance <= interactionDistance;
 
-        // If workbench is open, only handle closing
         if (WorkbenchUI.IsWorkbenchOpen)
         {
-            if (promptUI != null)
+            if (refs.interactionPromptUI != null)
             {
-                promptUI.HidePrompt(gameObject);
+                refs.interactionPromptUI.HidePrompt(gameObject);
             }
-
-            if (Input.GetKeyDown(inputSettings.interactKey) && !IsTypingInInputField())
-{
-    workbenchUI.CloseWorkbench();
-}
 
             return;
         }
@@ -65,26 +30,26 @@ public class WorkbenchStation : MonoBehaviour
 
         if (canInteract)
         {
-            if (promptUI != null)
+            if (refs.interactionPromptUI != null)
             {
-                promptUI.ShowPrompt("Press " + inputSettings.interactKey + " to use workbench", gameObject);
+                refs.interactionPromptUI.ShowPrompt("Press " + refs.inputSettings.interactKey + " to use workbench", gameObject);
             }
 
-            if (Input.GetKeyDown(inputSettings.interactKey))
+            if (Input.GetKeyDown(refs.inputSettings.interactKey))
             {
-                workbenchUI.ToggleWorkbench();
+                refs.workbenchUI.ToggleWorkbench();
 
-                if (promptUI != null)
+                if (refs.interactionPromptUI != null)
                 {
-                    promptUI.HidePrompt(gameObject);
+                    refs.interactionPromptUI.HidePrompt(gameObject);
                 }
             }
         }
         else
         {
-            if (promptUI != null)
+            if (refs.interactionPromptUI != null)
             {
-                promptUI.HidePrompt(gameObject);
+                refs.interactionPromptUI.HidePrompt(gameObject);
             }
         }
     }

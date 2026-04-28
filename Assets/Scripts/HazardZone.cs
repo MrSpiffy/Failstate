@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class HazardZone : MonoBehaviour
 {
-    public HazardSystemType affectedSystem = HazardSystemType.Core;
+    public PlayerSystemType affectedSystem = PlayerSystemType.Core;
     public float damagePerSecond = 10f;
 
     private void OnTriggerStay(Collider other)

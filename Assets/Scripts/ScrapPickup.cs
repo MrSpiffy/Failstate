@@ -2,55 +2,31 @@ using UnityEngine;
 
 public class ScrapPickup : MonoBehaviour
 {
-    public ResourceType resourceType = ResourceType.MetalScrap;
-    public int resourceAmount = 1;
+    public ItemType itemType = ItemType.MetalScrap;
+    public int itemAmount = 1;
     public float interactionDistance = 3f;
 
     public Material normalMaterial;
     public Material highlightMaterial;
 
-    private Transform player;
-    private ScrapInventory scrapInventory;
-    private InputSettings inputSettings;
     private Renderer objectRenderer;
-    private InteractionPromptUI promptUI;
 
     void Start()
     {
-        GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
-
-        if (playerObject != null)
-        {
-            player = playerObject.transform;
-            inputSettings = playerObject.GetComponent<InputSettings>();
-        }
-
-        GameObject gameManager = GameObject.Find("GameManager");
-
-        if (gameManager != null)
-        {
-            scrapInventory = gameManager.GetComponent<ScrapInventory>();
-        }
-
-        GameObject uiManager = GameObject.Find("UIManager");
-
-        if (uiManager != null)
-        {
-            promptUI = uiManager.GetComponent<InteractionPromptUI>();
-        }
-
         objectRenderer = GetComponent<Renderer>();
         SetNormalMaterial();
     }
 
     void Update()
     {
-        if (player == null || scrapInventory == null || inputSettings == null)
+        GameReferences refs = GameReferences.Instance;
+
+        if (refs == null || refs.playerTransform == null || refs.playerInventory == null || refs.inputSettings == null)
         {
             return;
         }
 
-        float distance = Vector3.Distance(transform.position, player.position);
+        float distance = Vector3.Distance(transform.position, refs.playerTransform.position);
         bool isInRange = distance <= interactionDistance;
         bool canInteract = isInRange && UIStateManager.CanInteract();
 
@@ -65,18 +41,21 @@ public class ScrapPickup : MonoBehaviour
 
         if (canInteract)
         {
-            if (promptUI != null)
+            if (refs.interactionPromptUI != null)
             {
-                promptUI.ShowPrompt("Press " + inputSettings.interactKey + " to collect " + resourceType, gameObject);
+                refs.interactionPromptUI.ShowPrompt(
+                    "Press " + refs.inputSettings.interactKey + " to collect " + ItemDatabase.GetDisplayName(itemType),
+                    gameObject
+                );
             }
 
-            if (Input.GetKeyDown(inputSettings.interactKey))
+            if (Input.GetKeyDown(refs.inputSettings.interactKey))
             {
-                scrapInventory.AddResource(resourceType, resourceAmount);
+                refs.playerInventory.AddItem(itemType, itemAmount);
 
-                if (promptUI != null)
+                if (refs.interactionPromptUI != null)
                 {
-                    promptUI.HidePrompt(gameObject);
+                    refs.interactionPromptUI.HidePrompt(gameObject);
                 }
 
                 Destroy(gameObject);
@@ -84,9 +63,9 @@ public class ScrapPickup : MonoBehaviour
         }
         else
         {
-            if (promptUI != null)
+            if (refs.interactionPromptUI != null)
             {
-                promptUI.HidePrompt(gameObject);
+                refs.interactionPromptUI.HidePrompt(gameObject);
             }
         }
     }

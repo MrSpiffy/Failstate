@@ -19,7 +19,7 @@ public class DevConsoleUI : MonoBehaviour
     public TextMeshProUGUI suggestionText;
     public ScrollRect historyScrollRect;
 
-    public ScrapInventory scrapInventory;
+    public PlayerInventory playerInventory;
     public PlayerCondition playerCondition;
 
     private readonly List<string> historyLines = new List<string>();
@@ -32,6 +32,8 @@ public class DevConsoleUI : MonoBehaviour
 
     private int selectedSuggestionIndex = 0;
     private string currentPartial = "";
+
+    private const float suggestionPanelY = 43f;
 
     void Awake()
     {
@@ -245,69 +247,17 @@ public class DevConsoleUI : MonoBehaviour
         bool endsWithSpace = input.EndsWith(" ");
         string[] parts = input.ToLower().Split(' ');
 
-        if (string.IsNullOrWhiteSpace(input))
+        if (!string.IsNullOrWhiteSpace(input) && !endsWithSpace)
         {
-            currentPartial = "";
-            AddMatchingSuggestions("", new string[] { "add", "help", "restore", "set" });
-        }
-        else if (parts.Length == 1 && !endsWithSpace)
-        {
-            currentPartial = parts[0];
-            AddMatchingSuggestions(currentPartial, new string[] { "add", "help", "restore", "set" });
-        }
-        else
-        {
-            string command = parts[0];
-
-            if (command == "add")
-            {
-                if (endsWithSpace && parts.Length == 2)
-                {
-                    currentPartial = "";
-                    AddMatchingSuggestions("", new string[] { "corefragments", "metal", "wiring" });
-                }
-                else if (parts.Length == 2)
-                {
-                    currentPartial = parts[1];
-                    AddMatchingSuggestions(currentPartial, new string[] { "corefragments", "metal", "wiring" });
-                }
-                else if (endsWithSpace && parts.Length == 3)
-                {
-                    currentPartial = "";
-                    AddMatchingSuggestions("", new string[] { "amount" });
-                }
-                else if (parts.Length == 3)
-                {
-                    currentPartial = parts[2];
-                    AddMatchingSuggestions(currentPartial, new string[] { "amount" });
-                }
-            }
-            else if (command == "set")
-            {
-                if (endsWithSpace && parts.Length == 2)
-                {
-                    currentPartial = "";
-                    AddMatchingSuggestions("", new string[] { "core", "mobility", "perception" });
-                }
-                else if (parts.Length == 2)
-                {
-                    currentPartial = parts[1];
-                    AddMatchingSuggestions(currentPartial, new string[] { "core", "mobility", "perception" });
-                }
-                else if (endsWithSpace && parts.Length == 3)
-                {
-                    currentPartial = "";
-                    AddMatchingSuggestions("", new string[] { "value" });
-                }
-                else if (parts.Length == 3)
-                {
-                    currentPartial = parts[2];
-                    AddMatchingSuggestions(currentPartial, new string[] { "value" });
-                }
-            }
+            currentPartial = parts[parts.Length - 1];
         }
 
-        currentSuggestions.Sort();
+        string[] suggestions = DevConsoleCommandSystem.GetSuggestions(parts, endsWithSpace);
+
+        for (int i = 0; i < suggestions.Length; i++)
+        {
+            currentSuggestions.Add(suggestions[i]);
+        }
 
         int restoredIndex = currentSuggestions.IndexOf(previousSelection);
         selectedSuggestionIndex = restoredIndex >= 0 ? restoredIndex : 0;
@@ -344,14 +294,27 @@ public class DevConsoleUI : MonoBehaviour
     void ResizeSuggestionPanel(float estimatedWidth)
     {
         RectTransform panelRect = suggestionPanel.GetComponent<RectTransform>();
+
         if (panelRect == null) return;
 
-        float width = Mathf.Clamp(estimatedWidth + 20f, suggestionMinWidth, suggestionMaxWidth);
+        RectTransform parentRect = suggestionPanel.transform.parent.GetComponent<RectTransform>();
+
+        float maxAllowedWidth = suggestionMaxWidth;
+
+        if (parentRect != null)
+        {
+            float leftPadding = 15f;
+            float rightPadding = 15f;
+
+            maxAllowedWidth = parentRect.rect.width - leftPadding - rightPadding;
+
+            panelRect.anchoredPosition = new Vector2(leftPadding, suggestionPanelY);
+        }
+
+        float width = Mathf.Clamp(estimatedWidth + 20f, suggestionMinWidth, maxAllowedWidth);
 
         panelRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
         panelRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, suggestionHeight);
-
-        panelRect.anchoredPosition = new Vector2(panelRect.anchoredPosition.x, 60f);
     }
 
     void MoveSuggestionSelection(int direction)
@@ -416,116 +379,15 @@ public class DevConsoleUI : MonoBehaviour
     {
         AddHistoryLine("> /" + input);
 
-        string[] parts = input.ToLower().Split(' ');
+        DevConsoleCommandResult result = DevConsoleCommandSystem.Execute(
+            input,
+            playerInventory,
+            playerCondition
+        );
 
-        if (parts.Length == 0) return;
-
-        switch (parts[0])
+        if (!string.IsNullOrWhiteSpace(result.message))
         {
-            case "help":
-                AddHistoryLine("Commands: help, add <metal|wiring|corefragments> <amount>, set <core|mobility|perception> <value>, restore");
-                break;
-
-            case "add":
-                HandleAddCommand(parts);
-                break;
-
-            case "set":
-                HandleSetCommand(parts);
-                break;
-
-            case "restore":
-                if (playerCondition != null)
-                {
-                    playerCondition.FullyRestoreAllSystems();
-
-                    if (scrapInventory != null)
-                    {
-                        scrapInventory.UpdateInventoryText();
-                    }
-
-                    AddHistoryLine("All systems fully restored.");
-                }
-                else
-                {
-                    AddHistoryLine("PlayerCondition not found.");
-                }
-                break;
-
-            default:
-                AddHistoryLine("Unknown command: " + input);
-                break;
+            AddHistoryLine(result.message);
         }
-    }
-
-    void HandleAddCommand(string[] parts)
-    {
-        if (scrapInventory == null || parts.Length < 3)
-        {
-            AddHistoryLine("Usage: add <metal|wiring|corefragments> <amount>");
-            return;
-        }
-
-        if (!int.TryParse(parts[2], out int amount))
-        {
-            AddHistoryLine("Invalid amount.");
-            return;
-        }
-
-        switch (parts[1])
-        {
-            case "metal":
-                scrapInventory.AddResource(ResourceType.MetalScrap, amount);
-                break;
-            case "wiring":
-                scrapInventory.AddResource(ResourceType.Wiring, amount);
-                break;
-            case "corefragments":
-                scrapInventory.AddResource(ResourceType.CoreFragment, amount);
-                break;
-            default:
-                AddHistoryLine("Unknown resource type.");
-                return;
-        }
-
-        AddHistoryLine("Added " + amount + " " + parts[1] + ".");
-    }
-
-    void HandleSetCommand(string[] parts)
-    {
-        if (playerCondition == null || parts.Length < 3)
-        {
-            AddHistoryLine("Usage: set <core|mobility|perception> <value>");
-            return;
-        }
-
-        if (!float.TryParse(parts[2], out float value))
-        {
-            AddHistoryLine("Invalid value.");
-            return;
-        }
-
-        switch (parts[1])
-        {
-            case "core":
-                playerCondition.currentCoreIntegrity = Mathf.Clamp(value, 0f, playerCondition.maxCoreIntegrity);
-                break;
-            case "mobility":
-                playerCondition.currentMobilityIntegrity = Mathf.Clamp(value, 0f, playerCondition.maxMobilityIntegrity);
-                break;
-            case "perception":
-                playerCondition.currentPerceptionIntegrity = Mathf.Clamp(value, 0f, playerCondition.maxPerceptionIntegrity);
-                break;
-            default:
-                AddHistoryLine("Unknown system type.");
-                return;
-        }
-
-        if (scrapInventory != null)
-        {
-            scrapInventory.UpdateInventoryText();
-        }
-
-        AddHistoryLine("Set " + parts[1] + " to " + value + ".");
     }
 }

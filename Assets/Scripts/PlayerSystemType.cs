@@ -1,4 +1,4 @@
-public enum HazardSystemType
+public enum PlayerSystemType
 {
     Core,
     Mobility,
