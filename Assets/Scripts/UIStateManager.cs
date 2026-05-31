@@ -9,6 +9,11 @@ public class UIStateManager : MonoBehaviour
     public PlayerMovement playerMovement;
     public CameraFollow cameraFollow;
 
+    void Awake()
+    {
+        ResetStateForLoadedScene();
+    }
+
     public static bool IsGameplay()
     {
         return CurrentState == UIState.Gameplay;
@@ -38,12 +43,28 @@ public class UIStateManager : MonoBehaviour
 
     public void SetState(UIState newState)
     {
+        if (CurrentState == UIState.GameOver && newState != UIState.GameOver)
+        {
+            return;
+        }
+
         CurrentState = newState;
+
+        if (CurrentState == UIState.GameOver)
+        {
+            CloseBlockingInterfacesForGameOver();
+        }
+
         ApplyStateEffects();
     }
 
     public void ReturnToGameplay()
     {
+        if (CurrentState == UIState.GameOver)
+        {
+            return;
+        }
+
         CurrentState = UIState.Gameplay;
         ApplyStateEffects();
     }
@@ -67,6 +88,43 @@ public class UIStateManager : MonoBehaviour
         Cursor.visible = cursorVisible;
         Cursor.lockState = cursorVisible ? CursorLockMode.None : CursorLockMode.Locked;
 
-        Time.timeScale = CurrentState == UIState.Pause ? 0f : 1f;
+        Time.timeScale = CurrentState == UIState.Pause || CurrentState == UIState.GameOver ? 0f : 1f;
+    }
+
+    void ResetStateForLoadedScene()
+    {
+        CurrentState = UIState.Gameplay;
+        Time.timeScale = 1f;
+        ApplyStateEffects();
+    }
+
+    void CloseBlockingInterfacesForGameOver()
+    {
+        GameReferences refs = GameReferences.Instance;
+
+        if (refs == null)
+        {
+            return;
+        }
+
+        if (refs.inventoryUI != null)
+        {
+            refs.inventoryUI.ForceCloseInventory();
+        }
+
+        if (refs.workbenchUI != null)
+        {
+            refs.workbenchUI.ForceCloseWorkbench();
+        }
+
+        if (refs.minimapUI != null)
+        {
+            refs.minimapUI.ForceCloseMap();
+        }
+
+        if (refs.interactionPromptUI != null)
+        {
+            refs.interactionPromptUI.HideAllPrompts();
+        }
     }
 }

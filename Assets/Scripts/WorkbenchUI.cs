@@ -27,6 +27,13 @@ public class WorkbenchUI : MonoBehaviour
 
     void Awake()
     {
+        IsWorkbenchOpen = false;
+
+        if (workbenchPanel != null)
+        {
+            workbenchPanel.SetActive(false);
+        }
+
         BuildRecipeList();
     }
 
@@ -102,6 +109,16 @@ public class WorkbenchUI : MonoBehaviour
         if (uiStateManager != null)
         {
             uiStateManager.ReturnToGameplay();
+        }
+    }
+
+    public void ForceCloseWorkbench()
+    {
+        IsWorkbenchOpen = false;
+
+        if (workbenchPanel != null)
+        {
+            workbenchPanel.SetActive(false);
         }
     }
 

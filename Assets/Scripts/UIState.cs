@@ -4,5 +4,7 @@ public enum UIState
     Inventory,
     Workbench,
     Pause,
-    DevConsole
+    DevConsole,
+    Map,
+    GameOver
 }

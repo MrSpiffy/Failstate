@@ -54,6 +54,11 @@ public class PlayerInventory : MonoBehaviour
 
     public bool CanAfford(ItemCost[] costs)
     {
+        if (costs == null || costs.Length == 0)
+        {
+            return true;
+        }
+
         for (int i = 0; i < costs.Length; i++)
         {
             if (GetItemCount(costs[i].itemType) < costs[i].amount)

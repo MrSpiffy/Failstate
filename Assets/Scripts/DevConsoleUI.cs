@@ -38,6 +38,26 @@ public class DevConsoleUI : MonoBehaviour
     void Awake()
     {
         Instance = this;
+        IsConsoleOpen = false;
+        LastClosedFrame = -1;
+
+        if (consolePanel != null)
+        {
+            consolePanel.SetActive(false);
+        }
+
+        if (suggestionPanel != null)
+        {
+            suggestionPanel.SetActive(false);
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
     }
 
     public static bool ConsumeEscape()

@@ -5,6 +5,7 @@ public class ScrapPickup : MonoBehaviour
     public ItemType itemType = ItemType.MetalScrap;
     public int itemAmount = 1;
     public float interactionDistance = 3f;
+    public string sourceContext = "salvage";
 
     public Material normalMaterial;
     public Material highlightMaterial;
@@ -44,8 +45,9 @@ public class ScrapPickup : MonoBehaviour
             if (refs.interactionPromptUI != null)
             {
                 refs.interactionPromptUI.ShowPrompt(
-                    "Press " + refs.inputSettings.interactKey + " to collect " + ItemDatabase.GetDisplayName(itemType),
-                    gameObject
+                    "Press " + refs.inputSettings.interactKey + " to collect " + ItemDatabase.GetDisplayName(itemType) + " from " + sourceContext,
+                    gameObject,
+                    15
                 );
             }
 
@@ -74,7 +76,7 @@ public class ScrapPickup : MonoBehaviour
     {
         if (objectRenderer != null && normalMaterial != null)
         {
-            objectRenderer.material = normalMaterial;
+            objectRenderer.sharedMaterial = normalMaterial;
         }
     }
 
@@ -82,7 +84,7 @@ public class ScrapPickup : MonoBehaviour
     {
         if (objectRenderer != null && highlightMaterial != null)
         {
-            objectRenderer.material = highlightMaterial;
+            objectRenderer.sharedMaterial = highlightMaterial;
         }
     }
 }

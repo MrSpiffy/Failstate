@@ -32,7 +32,11 @@ public class WorkbenchStation : MonoBehaviour
         {
             if (refs.interactionPromptUI != null)
             {
-                refs.interactionPromptUI.ShowPrompt("Press " + refs.inputSettings.interactKey + " to use workbench", gameObject);
+                refs.interactionPromptUI.ShowPrompt(
+                    "Press " + refs.inputSettings.interactKey + " to use workbench",
+                    gameObject,
+                    20
+                );
             }
 
             if (Input.GetKeyDown(refs.inputSettings.interactKey))

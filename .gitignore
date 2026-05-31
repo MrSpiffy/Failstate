@@ -5,6 +5,9 @@
 [Bb]uilds/
 [Ll]ogs/
 UserSettings/
+Assets/_Recovery/
+Assets/_Recovery.meta
+ProjectSettings/McpUnitySettings.json
 
 *.csproj
 *.unityproj
