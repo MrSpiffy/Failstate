@@ -188,6 +188,10 @@ public class CityBlockoutGenerator : MonoBehaviour
     [SerializeField] private List<Vector2Int> savedAlleyCells = new List<Vector2Int>();
     [SerializeField] private List<Vector2Int> savedStarterAreaCells = new List<Vector2Int>();
     [SerializeField] private List<Vector2Int> savedResourceOpportunityCells = new List<Vector2Int>();
+    [SerializeField] private List<Vector2Int> savedLandmarkAnchorCells = new List<Vector2Int>();
+    [SerializeField] private List<Vector2Int> savedHazardAnchorCells = new List<Vector2Int>();
+    [SerializeField] private List<Vector2Int> savedEnemyEncounterAnchorCells = new List<Vector2Int>();
+    [SerializeField] private List<Vector2Int> savedVantageAnchorCells = new List<Vector2Int>();
     [SerializeField] private List<Vector2Int> savedSignalDistrictCells = new List<Vector2Int>();
     [SerializeField] private List<Vector2Int> savedPowerDistrictCells = new List<Vector2Int>();
     [SerializeField] private List<Vector2Int> savedTransitDistrictCells = new List<Vector2Int>();
@@ -427,6 +431,46 @@ public class CityBlockoutGenerator : MonoBehaviour
     public List<Vector2Int> GetResourceOpportunityCells()
     {
         return new List<Vector2Int>(savedResourceOpportunityCells);
+    }
+
+    public List<Vector2Int> GetLandmarkAnchorCells()
+    {
+        return new List<Vector2Int>(savedLandmarkAnchorCells);
+    }
+
+    public List<Vector2Int> GetHazardAnchorCells()
+    {
+        return new List<Vector2Int>(savedHazardAnchorCells);
+    }
+
+    public List<Vector2Int> GetEnemyEncounterAnchorCells()
+    {
+        return new List<Vector2Int>(savedEnemyEncounterAnchorCells);
+    }
+
+    public List<Vector2Int> GetVantageAnchorCells()
+    {
+        return new List<Vector2Int>(savedVantageAnchorCells);
+    }
+
+    public List<Vector2Int> GetLandmarkAnchorCellsForDistrict(int districtIndex)
+    {
+        return FilterAnchorsByDistrict(savedLandmarkAnchorCells, districtIndex);
+    }
+
+    public List<Vector2Int> GetHazardAnchorCellsForDistrict(int districtIndex)
+    {
+        return FilterAnchorsByDistrict(savedHazardAnchorCells, districtIndex);
+    }
+
+    public List<Vector2Int> GetEnemyEncounterAnchorCellsForDistrict(int districtIndex)
+    {
+        return FilterAnchorsByDistrict(savedEnemyEncounterAnchorCells, districtIndex);
+    }
+
+    public List<Vector2Int> GetVantageAnchorCellsForDistrict(int districtIndex)
+    {
+        return FilterAnchorsByDistrict(savedVantageAnchorCells, districtIndex);
     }
 
     public List<Vector2Int> GetRestorationDistrictCells(int districtIndex)
@@ -826,6 +870,7 @@ public class CityBlockoutGenerator : MonoBehaviour
         savedAlleyCells.Clear();
         savedStarterAreaCells.Clear();
         savedResourceOpportunityCells.Clear();
+        ClearGeneratedAnchorCells();
         ClearSavedRestorationDistrictCells();
         plazaCenters.Clear();
         savedOpeningSignalCourtyardCell = new Vector2Int(-1, -1);
@@ -1030,6 +1075,7 @@ public class CityBlockoutGenerator : MonoBehaviour
         savedAlleyCells.Clear();
         savedStarterAreaCells.Clear();
         savedResourceOpportunityCells.Clear();
+        ClearGeneratedAnchorCells();
         ClearSavedRestorationDistrictCells();
         plazaCenters.Clear();
         savedOpeningSignalCourtyardCell = new Vector2Int(-1, -1);
@@ -1072,6 +1118,34 @@ public class CityBlockoutGenerator : MonoBehaviour
         {
             target.Add(source[i]);
         }
+    }
+
+    List<Vector2Int> FilterAnchorsByDistrict(List<Vector2Int> source, int districtIndex)
+    {
+        List<Vector2Int> filtered = new List<Vector2Int>();
+
+        if (source == null)
+        {
+            return filtered;
+        }
+
+        for (int i = 0; i < source.Count; i++)
+        {
+            if (GetRestorationDistrictIndex(source[i]) == districtIndex)
+            {
+                filtered.Add(source[i]);
+            }
+        }
+
+        return filtered;
+    }
+
+    void ClearGeneratedAnchorCells()
+    {
+        savedLandmarkAnchorCells.Clear();
+        savedHazardAnchorCells.Clear();
+        savedEnemyEncounterAnchorCells.Clear();
+        savedVantageAnchorCells.Clear();
     }
 
     void ClearSavedRestorationDistrictCells()
@@ -1739,6 +1813,7 @@ public class CityBlockoutGenerator : MonoBehaviour
             CarveNearZoneLoop(baseCell, radiusX, radiusY);
             CarveTemplateRouteNetwork(activeStarterAreaLayoutPlan, baseCell);
             CarveTemplateResourceOpportunityNetwork(activeStarterAreaLayoutPlan);
+            CarveTemplateSectorLandmarkNetwork(activeStarterAreaLayoutPlan);
             return;
         }
 
@@ -2090,8 +2165,11 @@ public class CityBlockoutGenerator : MonoBehaviour
         for (int route = 0; route < plan.mainRoutes.Count; route++)
         {
             StarterAreaRoutePlan routePlan = plan.mainRoutes[route];
-            CarveTemplatePolylineRoute(routePlan.points, mainStreetRadius, mainStreetCells, true, 0.03f);
+            CarveTemplatePolylineRoute(routePlan.points, mainStreetRadius, mainStreetCells, true, 0.08f);
         }
+
+        CarveTemplateMainRouteBranches(plan);
+        CarveTemplateWorkshopBypassStreets(plan, baseCell);
 
         for (int i = 0; i < plan.sectors.Count; i++)
         {
@@ -2115,8 +2193,152 @@ public class CityBlockoutGenerator : MonoBehaviour
 
         for (int i = 0; i < points.Count - 1; i++)
         {
-            CarveRouteBetweenCells(points[i], points[i + 1], corridorRadius, categoryList, ignoreSpacing, wanderChance);
+            List<Vector2Int> streetPoints = BuildNaturalStreetSegment(points[i], points[i + 1]);
+
+            for (int point = 0; point < streetPoints.Count - 1; point++)
+            {
+                CarveRouteBetweenCells(streetPoints[point], streetPoints[point + 1], corridorRadius, categoryList, ignoreSpacing, wanderChance);
+            }
         }
+    }
+
+    List<Vector2Int> BuildNaturalStreetSegment(Vector2Int start, Vector2Int end)
+    {
+        List<Vector2Int> points = new List<Vector2Int>
+        {
+            start
+        };
+
+        Vector2Int delta = end - start;
+        int distance = Mathf.Abs(delta.x) + Mathf.Abs(delta.y);
+
+        if (distance >= 12)
+        {
+            Vector2Int dominant = GetDominantCardinalDirection(delta);
+            Vector2Int lateral = new Vector2Int(-dominant.y, dominant.x);
+            int bend = Random.Range(-3, 4);
+
+            if (bend == 0)
+            {
+                bend = Random.value < 0.5f ? -2 : 2;
+            }
+
+            Vector2Int midpoint = new Vector2Int(
+                Mathf.RoundToInt((start.x + end.x) * 0.5f),
+                Mathf.RoundToInt((start.y + end.y) * 0.5f)
+            );
+
+            Vector2Int bendPoint = ClampToMapMargin(midpoint + lateral * bend, 3);
+
+            if (IsCellInsideStarterArea(bendPoint.x, bendPoint.y))
+            {
+                points.Add(bendPoint);
+            }
+        }
+
+        points.Add(end);
+        return points;
+    }
+
+    void CarveTemplateMainRouteBranches(StarterAreaLayoutPlan plan)
+    {
+        if (plan == null)
+        {
+            return;
+        }
+
+        for (int route = 0; route < plan.mainRoutes.Count; route++)
+        {
+            StarterAreaRoutePlan routePlan = plan.mainRoutes[route];
+
+            if (routePlan.points.Count < 3 || routePlan.sectorIndex < 0 || routePlan.sectorIndex >= plan.sectors.Count)
+            {
+                continue;
+            }
+
+            StarterAreaSectorPlan sector = plan.sectors[routePlan.sectorIndex];
+            Vector2Int branchStart = routePlan.points[Mathf.Clamp(routePlan.points.Count - 2, 0, routePlan.points.Count - 1)];
+            Vector2Int branchTarget = PickNearestTemplateAnchor(branchStart, sector.neighborhoodCells, sector.relayCell);
+
+            if (branchTarget == branchStart || Vector2Int.Distance(branchStart, branchTarget) < 6f)
+            {
+                continue;
+            }
+
+            CarveRouteBetweenCells(branchStart, branchTarget, sideStreetRadius, sideStreetCells, false, 0.18f);
+        }
+    }
+
+    void CarveTemplateWorkshopBypassStreets(StarterAreaLayoutPlan plan, Vector2Int baseCell)
+    {
+        if (plan == null || plan.sectors.Count < 3)
+        {
+            return;
+        }
+
+        Vector2Int signalApproach = PickRouteCellNearSector(plan.sectors[0].relayCell, mainStreetCells, plan.sectors[0].relayCell, 0);
+        Vector2Int powerApproach = PickRouteCellNearSector(plan.sectors[1].relayCell, mainStreetCells, plan.sectors[1].relayCell, 1);
+        Vector2Int transitApproach = PickRouteCellNearSector(plan.sectors[2].relayCell, mainStreetCells, plan.sectors[2].relayCell, 2);
+
+        CarveWorkshopBypass(signalApproach, powerApproach, baseCell, 0);
+        CarveWorkshopBypass(powerApproach, transitApproach, baseCell, 1);
+    }
+
+    void CarveWorkshopBypass(Vector2Int start, Vector2Int target, Vector2Int baseCell, int salt)
+    {
+        if (start == target)
+        {
+            return;
+        }
+
+        Vector2Int delta = target - start;
+        Vector2Int dominant = GetDominantCardinalDirection(delta);
+        Vector2Int lateral = new Vector2Int(-dominant.y, dominant.x);
+        Vector2Int midpoint = new Vector2Int(
+            Mathf.RoundToInt((start.x + target.x) * 0.5f),
+            Mathf.RoundToInt((start.y + target.y) * 0.5f)
+        );
+
+        Vector2Int awayFromBase = GetDominantCardinalDirection(midpoint - baseCell);
+
+        if (awayFromBase == Vector2Int.zero)
+        {
+            awayFromBase = lateral;
+        }
+
+        Vector2Int bypassPoint = ClampToMapMargin(midpoint + awayFromBase * (nearZoneLoopRadius + 2 + salt * 2), 3);
+
+        if (!IsCellInsideStarterArea(bypassPoint.x, bypassPoint.y))
+        {
+            return;
+        }
+
+        CarveRouteBetweenCells(start, bypassPoint, sideStreetRadius, sideStreetCells, false, 0.22f);
+        CarveRouteBetweenCells(bypassPoint, target, sideStreetRadius, sideStreetCells, false, 0.22f);
+    }
+
+    Vector2Int PickNearestTemplateAnchor(Vector2Int start, List<Vector2Int> anchors, Vector2Int fallback)
+    {
+        Vector2Int best = fallback;
+        float bestDistance = Vector2Int.Distance(start, fallback);
+
+        if (anchors == null)
+        {
+            return best;
+        }
+
+        for (int i = 0; i < anchors.Count; i++)
+        {
+            float distance = Vector2Int.Distance(start, anchors[i]);
+
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                best = anchors[i];
+            }
+        }
+
+        return best;
     }
 
     Vector2Int GetTransitRelayCell(StarterAreaLayoutPlan plan)
@@ -2317,6 +2539,138 @@ public class CityBlockoutGenerator : MonoBehaviour
                 CarveResourceOpportunityAlleys(opportunity, sectorIndex);
                 previousOpportunity = opportunity;
             }
+        }
+    }
+
+    void CarveTemplateSectorLandmarkNetwork(StarterAreaLayoutPlan plan)
+    {
+        if (plan == null)
+        {
+            return;
+        }
+
+        for (int sectorIndex = 0; sectorIndex < plan.sectors.Count; sectorIndex++)
+        {
+            StarterAreaSectorPlan sector = plan.sectors[sectorIndex];
+            List<Vector2Int> candidates = BuildSectorLandmarkCandidates(sector);
+            int targetCount = sectorIndex == 0 ? 2 : sectorIndex == 1 ? 3 : 4;
+            List<Vector2Int> sectorLandmarks = new List<Vector2Int>();
+
+            for (int i = 0; i < candidates.Count && sectorLandmarks.Count < targetCount; i++)
+            {
+                Vector2Int anchor = candidates[i];
+
+                if (!IsCellInsideStarterArea(anchor.x, anchor.y) ||
+                    !IsFarEnoughFromCells(anchor, sectorLandmarks, 8f) ||
+                    !IsFarEnoughFromCells(anchor, savedLandmarkAnchorCells, 8f))
+                {
+                    continue;
+                }
+
+                CarveCompactLandmarkStreetFrame(anchor, sector.relayCell, sectorIndex, sectorLandmarks.Count);
+                AddUniqueGeneratedAnchor(savedLandmarkAnchorCells, anchor);
+                AddFutureSystemAnchorsNearLandmark(anchor, sector.relayCell, sectorIndex, sectorLandmarks.Count);
+                sectorLandmarks.Add(anchor);
+            }
+        }
+    }
+
+    List<Vector2Int> BuildSectorLandmarkCandidates(StarterAreaSectorPlan sector)
+    {
+        List<Vector2Int> candidates = new List<Vector2Int>();
+
+        for (int i = 0; i < sector.resourceOpportunityCells.Count; i++)
+        {
+            candidates.Add(sector.resourceOpportunityCells[i]);
+        }
+
+        for (int i = 0; i < sector.neighborhoodCells.Count; i++)
+        {
+            candidates.Add(sector.neighborhoodCells[i]);
+        }
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            int swapIndex = Random.Range(i, candidates.Count);
+            Vector2Int temp = candidates[i];
+            candidates[i] = candidates[swapIndex];
+            candidates[swapIndex] = temp;
+        }
+
+        return candidates;
+    }
+
+    void CarveCompactLandmarkStreetFrame(Vector2Int anchor, Vector2Int sectorRelayCell, int sectorIndex, int landmarkIndex)
+    {
+        Vector2Int routeSeed = FindNearestRouteCell(anchor, true);
+        CarveRouteBetweenCells(routeSeed, anchor, sideStreetRadius, sideStreetCells, false, 0.12f);
+
+        Vector2Int radial = GetDominantCardinalDirection(anchor - sectorRelayCell);
+
+        if (radial == Vector2Int.zero)
+        {
+            radial = GetDominantCardinalDirection(anchor - GetBaseCell());
+        }
+
+        Vector2Int lateral = new Vector2Int(-radial.y, radial.x);
+        int halfWidth = sectorIndex == 0 ? 2 : 3;
+        int halfHeight = sectorIndex == 2 && landmarkIndex % 2 == 0 ? 3 : 2;
+
+        CarveStraightServiceSegment(anchor - lateral * halfWidth, anchor + lateral * halfWidth, sideStreetRadius, sideStreetCells);
+        CarveStraightServiceSegment(anchor - radial * halfHeight, anchor + radial * halfHeight, alleyRadius, alleyCells);
+
+        if (sectorIndex > 0)
+        {
+            Vector2Int serviceBend = anchor + radial * halfHeight + lateral * (landmarkIndex % 2 == 0 ? 2 : -2);
+            CarveRouteBetweenCells(anchor + radial * halfHeight, serviceBend, alleyRadius, alleyCells, false, 0.45f);
+        }
+    }
+
+    void AddFutureSystemAnchorsNearLandmark(Vector2Int landmark, Vector2Int sectorRelayCell, int sectorIndex, int landmarkIndex)
+    {
+        Vector2Int radial = GetDominantCardinalDirection(landmark - sectorRelayCell);
+
+        if (radial == Vector2Int.zero)
+        {
+            radial = GetDominantCardinalDirection(landmark - GetBaseCell());
+        }
+
+        Vector2Int lateral = new Vector2Int(-radial.y, radial.x);
+        Vector2Int hazardAnchor = ClampToMapMargin(landmark + lateral * (landmarkIndex % 2 == 0 ? 3 : -3), 3);
+        Vector2Int encounterAnchor = ClampToMapMargin(landmark - radial * (sectorIndex + 3), 3);
+        Vector2Int vantageAnchor = ClampToMapMargin(landmark + radial * (sectorIndex == 0 ? 4 : sectorIndex == 1 ? 5 : 6), 3);
+
+        TryAddFutureAnchor(savedHazardAnchorCells, hazardAnchor, 7f);
+        TryAddFutureAnchor(savedEnemyEncounterAnchorCells, encounterAnchor, 8f);
+
+        if (landmarkIndex == 0 || sectorIndex == 2)
+        {
+            TryAddFutureAnchor(savedVantageAnchorCells, vantageAnchor, 12f);
+        }
+    }
+
+    bool TryAddFutureAnchor(List<Vector2Int> anchors, Vector2Int cell, float minimumSpacing)
+    {
+        if (!IsInsideBounds(cell) || !IsCellInsideStarterArea(cell.x, cell.y))
+        {
+            return false;
+        }
+
+        if (!IsFarEnoughFromCells(cell, anchors, minimumSpacing))
+        {
+            return false;
+        }
+
+        CarveCorridor(cell, alleyRadius, alleyCells, true);
+        AddUniqueGeneratedAnchor(anchors, cell);
+        return true;
+    }
+
+    void AddUniqueGeneratedAnchor(List<Vector2Int> anchors, Vector2Int cell)
+    {
+        if (anchors != null && !anchors.Contains(cell))
+        {
+            anchors.Add(cell);
         }
     }
 
@@ -2982,6 +3336,11 @@ public class CityBlockoutGenerator : MonoBehaviour
             CarvePlazaNeighborhoodConnectors(sectorCenter, i);
         }
 
+        if (ShouldUseTemplateGuidedLayout())
+        {
+            CarveTemplateInterSectorContinuityLinks();
+        }
+
         for (int i = 0; i < Mathf.Max(1, structuredSideStreetConnectorCount / 4); i++)
         {
             Vector2Int sectorCenter = plannedRelaySectorCells[Random.Range(0, plannedRelaySectorCells.Count)];
@@ -2991,6 +3350,104 @@ public class CityBlockoutGenerator : MonoBehaviour
             if (target != start)
             {
                 CarveServiceConnectorPath(start, target, sideStreetRadius, sideStreetCells);
+            }
+        }
+    }
+
+    void CarveTemplateInterSectorContinuityLinks()
+    {
+        if (activeStarterAreaLayoutPlan == null || activeStarterAreaLayoutPlan.sectors.Count < 3)
+        {
+            return;
+        }
+
+        CarveTemplateContinuityLink(0, 1, true);
+        CarveTemplateContinuityLink(0, 2, false);
+        CarveTemplateContinuityLink(1, 2, true);
+    }
+
+    void CarveTemplateContinuityLink(int sectorA, int sectorB, bool preferSideStreet)
+    {
+        if (sectorA >= activeStarterAreaLayoutPlan.sectors.Count || sectorB >= activeStarterAreaLayoutPlan.sectors.Count)
+        {
+            return;
+        }
+
+        StarterAreaSectorPlan a = activeStarterAreaLayoutPlan.sectors[sectorA];
+        StarterAreaSectorPlan b = activeStarterAreaLayoutPlan.sectors[sectorB];
+        Vector2Int start = PickSectorContinuityCell(a, b.relayCell, sectorA);
+        Vector2Int target = PickSectorContinuityCell(b, a.relayCell, sectorB);
+
+        if (start == target || Vector2Int.Distance(start, target) < 8f)
+        {
+            return;
+        }
+
+        List<Vector2Int> category = preferSideStreet && Random.value < 0.45f ? sideStreetCells : alleyCells;
+        int radius = category == sideStreetCells ? sideStreetRadius : alleyRadius;
+
+        CarveRouteBetweenCells(start, target, radius, category, false, 0.34f);
+    }
+
+    Vector2Int PickSectorContinuityCell(StarterAreaSectorPlan sector, Vector2Int toward, int sectorIndex)
+    {
+        List<Vector2Int> candidates = new List<Vector2Int>();
+        float maxDistance = GetSectorRadius(sectorIndex) + 8f;
+
+        AddContinuityCandidates(sideStreetCells, sector.relayCell, toward, maxDistance, candidates);
+        AddContinuityCandidates(alleyCells, sector.relayCell, toward, maxDistance, candidates);
+
+        if (candidates.Count == 0)
+        {
+            return PickNearestTemplateAnchor(toward, sector.neighborhoodCells, sector.relayCell);
+        }
+
+        Vector2Int best = candidates[0];
+        float bestScore = float.MaxValue;
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            Vector2Int candidate = candidates[i];
+            float score = Vector2Int.Distance(candidate, toward);
+            score += Mathf.Max(0f, 9f - Vector2Int.Distance(candidate, sector.relayCell)) * 8f;
+            score += mainStreetCells.Contains(candidate) ? 20f : 0f;
+            score += Random.Range(0f, 2f);
+
+            if (score < bestScore)
+            {
+                bestScore = score;
+                best = candidate;
+            }
+        }
+
+        return best;
+    }
+
+    void AddContinuityCandidates(List<Vector2Int> source, Vector2Int sectorCenter, Vector2Int toward, float maxDistance, List<Vector2Int> candidates)
+    {
+        if (source == null)
+        {
+            return;
+        }
+
+        Vector2Int directionToNeighbor = GetDominantCardinalDirection(toward - sectorCenter);
+
+        for (int i = 0; i < source.Count; i++)
+        {
+            Vector2Int cell = source[i];
+
+            if (Vector2Int.Distance(cell, sectorCenter) > maxDistance ||
+                Vector2Int.Distance(cell, sectorCenter) < 8f ||
+                !IsCellInsideStarterArea(cell.x, cell.y))
+            {
+                continue;
+            }
+
+            Vector2Int candidateDirection = GetDominantCardinalDirection(cell - sectorCenter);
+
+            if (candidateDirection == directionToNeighbor && !candidates.Contains(cell))
+            {
+                candidates.Add(cell);
             }
         }
     }
