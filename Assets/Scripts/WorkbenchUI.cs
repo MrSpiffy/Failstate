@@ -177,7 +177,9 @@ public class WorkbenchUI : MonoBehaviour
                 "Press 1-9 to craft a visible recipe.\n" +
                 "Resources — Metal: " + playerInventory.GetItemCount(ItemType.MetalScrap) +
                 " | Wiring: " + playerInventory.GetItemCount(ItemType.Wiring) +
-                " | Core Fragments: " + playerInventory.GetItemCount(ItemType.CoreFragment);
+                " | Core Fragments: " + playerInventory.GetItemCount(ItemType.CoreFragment) +
+                " | Circuits: " + playerInventory.GetItemCount(ItemType.CircuitScrap) +
+                " | Cells: " + playerInventory.GetItemCount(ItemType.EnergyCell);
         }
 
         StartCoroutine(ScrollRecipesToTopNextFrame());
@@ -225,6 +227,21 @@ public class WorkbenchUI : MonoBehaviour
         {
             playerInventory.AddItem(recipe.outputItem, recipe.outputAmount);
             Debug.Log("Crafted " + recipe.outputAmount + " " + ItemDatabase.GetDisplayName(recipe.outputItem));
+
+            if (recipe.outputItem == ItemType.StabilizerModule)
+            {
+                FirstRunObjectiveManager objectiveManager = FindFirstObjectByType<FirstRunObjectiveManager>();
+
+                if (objectiveManager != null)
+                {
+                    objectiveManager.NotifyStabilizerModuleCrafted();
+                }
+
+                if (SystemMessageUI.Instance != null)
+                {
+                    SystemMessageUI.Instance.ShowMessage("STABILIZER MODULE ASSEMBLED\nReturn to the Signal Relay and install the module.", 4.5f);
+                }
+            }
         }
 
         UpdateRecipeDisplay();

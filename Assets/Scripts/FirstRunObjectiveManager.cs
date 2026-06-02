@@ -15,6 +15,13 @@ public class FirstRunObjectiveManager : MonoBehaviour
     private bool announcedTransitRelay = false;
     private bool announcedReadyToReturn = false;
     private bool completed = false;
+    private bool signalRelayDiagnosed = false;
+    private bool signalProcessorRecovered = false;
+    private bool conduitComponentsRecovered = false;
+    private bool stabilizerModuleCrafted = false;
+    private bool signalProcessorInstalled = false;
+    private bool stabilizerModuleInstalled = false;
+    private int signalConduitNodesReconnected = 0;
     private readonly HashSet<int> recoveredEnvironmentalFragments = new HashSet<int>();
 
     void Start()
@@ -110,6 +117,11 @@ public class FirstRunObjectiveManager : MonoBehaviour
             return "OBJECTIVE: scan for further infrastructure signals";
         }
 
+        if (nearest.nodeType == InfrastructureNodeType.SignalRelay)
+        {
+            return GetSignalRelayObjectiveText(nearest, playerPosition, inventory, restoredCount, chainLength);
+        }
+
         string affordability = inventory != null && inventory.CanAfford(nearest.repairCosts)
             ? "repair resources ready"
             : "needs " + nearest.GetCostText();
@@ -124,6 +136,62 @@ public class FirstRunObjectiveManager : MonoBehaviour
     public bool IsCompleted()
     {
         return completed;
+    }
+
+    public void NotifySignalRelayDiagnosed()
+    {
+        signalRelayDiagnosed = true;
+    }
+
+    public void NotifyRelaySalvageLooted(ItemCost[] contents)
+    {
+        if (contents == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < contents.Length; i++)
+        {
+            if (contents[i].itemType == ItemType.SignalProcessor)
+            {
+                signalProcessorRecovered = true;
+            }
+            else if (contents[i].itemType == ItemType.ConduitComponents)
+            {
+                conduitComponentsRecovered = true;
+            }
+        }
+    }
+
+    public void NotifyStabilizerModuleCrafted()
+    {
+        stabilizerModuleCrafted = true;
+    }
+
+    public void NotifySignalProcessorInstalled()
+    {
+        signalProcessorInstalled = true;
+    }
+
+    public void NotifyStabilizerModuleInstalled()
+    {
+        stabilizerModuleInstalled = true;
+    }
+
+    public void NotifyConduitNodeReconnected(int activeNodeCount)
+    {
+        signalConduitNodesReconnected = Mathf.Clamp(activeNodeCount, 0, 3);
+    }
+
+    public void NotifySignalRelayRestored()
+    {
+        signalRelayDiagnosed = true;
+        signalProcessorRecovered = true;
+        conduitComponentsRecovered = true;
+        stabilizerModuleCrafted = true;
+        signalProcessorInstalled = true;
+        stabilizerModuleInstalled = true;
+        signalConduitNodesReconnected = 3;
     }
 
     public void RegisterEnvironmentalFragment(int fragmentIndex)
@@ -158,6 +226,75 @@ public class FirstRunObjectiveManager : MonoBehaviour
         }
 
         return summary + "\nNo peripheral traces cached.";
+    }
+
+    string GetSignalRelayObjectiveText(
+        InfrastructureNode signalRelay,
+        Vector3 playerPosition,
+        PlayerInventory inventory,
+        int restoredCount,
+        int chainLength)
+    {
+        int distance = Mathf.RoundToInt(Vector3.Distance(playerPosition, signalRelay.transform.position));
+
+        if (!signalRelayDiagnosed)
+        {
+            return
+                "OBJECTIVE: diagnose Signal Relay (" + restoredCount + "/" + chainLength + ")\n" +
+                distance + "m away - run diagnostics at the relay courtyard.\n" +
+                networkManager.GetRequiredChainText();
+        }
+
+        bool hasProcessor = signalProcessorInstalled || signalProcessorRecovered || HasInventoryItem(inventory, ItemType.SignalProcessor);
+        bool hasConduitComponents = signalConduitNodesReconnected > 0 || conduitComponentsRecovered || HasInventoryItem(inventory, ItemType.ConduitComponents);
+        bool hasStabilizer = stabilizerModuleInstalled || stabilizerModuleCrafted || HasInventoryItem(inventory, ItemType.StabilizerModule);
+
+        if (!hasProcessor)
+        {
+            return
+                "OBJECTIVE: find Signal Processor\n" +
+                "Search Signal-sector resource opportunities near the relay.";
+        }
+
+        if (!hasConduitComponents)
+        {
+            return
+                "OBJECTIVE: find Conduit Components\n" +
+                "Search compact depots and utility alcoves in the Signal sector.";
+        }
+
+        if (!hasStabilizer)
+        {
+            string resourceLine = inventory != null
+                ? "Workbench recipe needs 2 Metal Scrap + 2 Circuit Scrap + 1 Energy Cell."
+                : "Craft the Stabilizer Module at the workshop.";
+            return
+                "OBJECTIVE: craft Stabilizer Module at workshop\n" +
+                resourceLine;
+        }
+
+        if (!signalProcessorInstalled)
+        {
+            return
+                "OBJECTIVE: return to Signal Relay\n" +
+                "Install Signal Processor - " + distance + "m away.";
+        }
+
+        if (!stabilizerModuleInstalled)
+        {
+            return
+                "OBJECTIVE: repair Signal Relay\n" +
+                "Install Stabilizer Module at the relay panel.";
+        }
+
+        return
+            "OBJECTIVE: reconnect Conduit Array\n" +
+            "Activate conduit nodes around the relay (" + signalConduitNodesReconnected + "/3).";
+    }
+
+    bool HasInventoryItem(PlayerInventory inventory, ItemType itemType)
+    {
+        return inventory != null && inventory.GetItemCount(itemType) > 0;
     }
 
     public int GetArchivePageCount()

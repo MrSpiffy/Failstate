@@ -26,6 +26,8 @@ public class InfrastructureNetworkManager : MonoBehaviour
     private Vector3 deepCitySignalPosition;
     private Vector3 deepCitySignalApproachDirection = Vector3.back;
     private GameObject deepCitySignalBeacon;
+    private GeneratedWorldSpawner generatedWorldSpawner;
+    private CityBlockoutGenerator cityGenerator;
 
     void Update()
     {
@@ -180,7 +182,43 @@ public class InfrastructureNetworkManager : MonoBehaviour
             }
         }
 
+        if (playerPosition.HasValue && IsPlayerInsideRestoredDistrict(playerPosition.Value))
+        {
+            multiplier *= 0.75f;
+        }
+
         return Mathf.Clamp(multiplier, 0.42f, 1f);
+    }
+
+    bool IsPlayerInsideRestoredDistrict(Vector3 playerPosition)
+    {
+        if (generatedWorldSpawner == null)
+        {
+            generatedWorldSpawner = FindFirstObjectByType<GeneratedWorldSpawner>();
+        }
+
+        if (cityGenerator == null)
+        {
+            GameReferences refs = GameReferences.Instance;
+            cityGenerator = refs != null ? refs.cityGenerator : null;
+        }
+
+        if (cityGenerator == null)
+        {
+            cityGenerator = FindFirstObjectByType<CityBlockoutGenerator>();
+        }
+
+        if (generatedWorldSpawner == null || cityGenerator == null)
+        {
+            return false;
+        }
+
+        if (!cityGenerator.TryWorldToCell(playerPosition, out Vector2Int cell))
+        {
+            return false;
+        }
+
+        return generatedWorldSpawner.IsRestoredDistrictCell(cell.x, cell.y);
     }
 
     public InfrastructureNode GetNearestUnrestoredNode(Vector3 position)

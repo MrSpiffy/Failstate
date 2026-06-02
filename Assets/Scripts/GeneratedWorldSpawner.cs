@@ -34,6 +34,7 @@ public class GeneratedWorldSpawner : MonoBehaviour
     public bool spawnPowerTutorialHazard = true;
     public bool placePrimaryRelaysInCourtyards = true;
     public bool spawnSupplementalInfrastructureNodes = false;
+    public bool spawnSignalRelayRestorationPrototype = true;
 
     [Header("District Restoration")]
     public bool spawnDistrictRestorationVisuals = true;
@@ -207,6 +208,7 @@ public class GeneratedWorldSpawner : MonoBehaviour
         SpawnInfrastructureNodes();
         SpawnDistrictRestorationVisuals();
         SpawnOutboundSignalResources();
+        SpawnSignalRelayRestorationCaches();
         SpawnResources();
         SpawnHazards();
         ValidateOpeningPacing();
@@ -649,6 +651,149 @@ public class GeneratedWorldSpawner : MonoBehaviour
         return true;
     }
 
+    void SpawnSignalRelayRestorationCaches()
+    {
+        if (!spawnSignalRelayRestorationPrototype || !IsRecordedCell(requiredSignalCell))
+        {
+            return;
+        }
+
+        List<Vector2Int> candidates = BuildSignalRelayCacheCandidates();
+        List<Vector2Int> usedCells = new List<Vector2Int>();
+
+        if (TryPickSignalRelayCacheCell(candidates, usedCells, out Vector2Int processorCell))
+        {
+            SpawnRelaySalvageCacheAtCell(
+                processorCell,
+                "signal processor depot",
+                new ItemCost[]
+                {
+                    new ItemCost(ItemType.SignalProcessor, 1),
+                    new ItemCost(ItemType.CircuitScrap, 1),
+                    new ItemCost(ItemType.MetalScrap, 1)
+                },
+                "PROC"
+            );
+            usedCells.Add(processorCell);
+        }
+
+        if (TryPickSignalRelayCacheCell(candidates, usedCells, out Vector2Int conduitCell))
+        {
+            SpawnRelaySalvageCacheAtCell(
+                conduitCell,
+                "conduit repair alcove",
+                new ItemCost[]
+                {
+                    new ItemCost(ItemType.ConduitComponents, 1),
+                    new ItemCost(ItemType.CircuitScrap, 1),
+                    new ItemCost(ItemType.EnergyCell, 1),
+                    new ItemCost(ItemType.MetalScrap, 1)
+                },
+                "COND"
+            );
+        }
+    }
+
+    List<Vector2Int> BuildSignalRelayCacheCandidates()
+    {
+        List<Vector2Int> candidates = new List<Vector2Int>();
+        List<Vector2Int> opportunities = city.GetResourceOpportunityCells();
+
+        for (int i = 0; i < opportunities.Count; i++)
+        {
+            Vector2Int cell = opportunities[i];
+
+            if (city.GetRestorationDistrictIndex(cell) == 0 &&
+                Vector2Int.Distance(cell, requiredSignalCell) >= 4f &&
+                Vector2Int.Distance(cell, requiredSignalCell) <= 18f &&
+                IsValidResourceCell(cell))
+            {
+                candidates.Add(cell);
+            }
+        }
+
+        if (candidates.Count >= 2)
+        {
+            return candidates;
+        }
+
+        List<Vector2Int> walkableCells = city.GetWalkableCells();
+
+        for (int i = 0; i < walkableCells.Count; i++)
+        {
+            Vector2Int cell = walkableCells[i];
+            float distance = Vector2Int.Distance(cell, requiredSignalCell);
+
+            if (distance < 5f || distance > 16f)
+            {
+                continue;
+            }
+
+            if (city.GetRestorationDistrictIndex(cell) != 0)
+            {
+                continue;
+            }
+
+            if (city.IsCellPlaza(cell.x, cell.y) || city.IsCellMainStreet(cell.x, cell.y))
+            {
+                continue;
+            }
+
+            if (!IsValidResourceCell(cell))
+            {
+                continue;
+            }
+
+            candidates.Add(cell);
+        }
+
+        return candidates;
+    }
+
+    bool TryPickSignalRelayCacheCell(List<Vector2Int> candidates, List<Vector2Int> usedCells, out Vector2Int selected)
+    {
+        selected = default;
+        float bestScore = float.MaxValue;
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            Vector2Int cell = candidates[i];
+
+            if (!IsValidResourceCell(cell) || IsTooCloseToCells(cell, usedCells, 7))
+            {
+                continue;
+            }
+
+            float distance = Vector2Int.Distance(cell, requiredSignalCell);
+            float score = Mathf.Abs(distance - 9f);
+
+            if (IsResourceOpportunityCell(cell))
+            {
+                score -= 2.5f;
+            }
+
+            if (city.IsCellAlley(cell.x, cell.y) || city.IsCellSideStreet(cell.x, cell.y))
+            {
+                score -= 0.75f;
+            }
+
+            if (HasNonWalkableCellNearby(cell, 1))
+            {
+                score -= 0.4f;
+            }
+
+            score += Random.Range(0f, 0.6f);
+
+            if (score < bestScore)
+            {
+                bestScore = score;
+                selected = cell;
+            }
+        }
+
+        return bestScore < float.MaxValue;
+    }
+
     bool TryPickCandidateInDistanceBand(
         List<Vector2Int> candidates,
         float minimumDistance,
@@ -1086,6 +1231,70 @@ public class GeneratedWorldSpawner : MonoBehaviour
         spawnedResourceLookup.Add(cell);
     }
 
+    void SpawnRelaySalvageCacheAtCell(Vector2Int cell, string cacheName, ItemCost[] contents, string labelText)
+    {
+        Vector3 position = city.CellToWorld(cell.x, cell.y, resourceYOffset);
+        GameObject cacheObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        cacheObject.transform.SetParent(transform);
+        cacheObject.transform.position = position;
+        cacheObject.transform.localScale = new Vector3(1.15f, 0.62f, 1f);
+        cacheObject.name = "SignalRelayCache_" + cacheName.Replace(" ", "_");
+
+        Collider collider = cacheObject.GetComponent<Collider>();
+
+        if (collider != null)
+        {
+            collider.isTrigger = true;
+        }
+
+        ApplyRendererColor(cacheObject.GetComponent<Renderer>(), new Color(0.18f, 0.48f, 0.55f, 1f));
+
+        GeneratedResourceMarker marker = cacheObject.AddComponent<GeneratedResourceMarker>();
+        marker.spawner = this;
+        marker.cell = cell;
+
+        RelaySalvageCache cache = cacheObject.AddComponent<RelaySalvageCache>();
+        cache.Configure(cacheName, contents);
+
+        GameObject beacon = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        beacon.name = "RelayCache_Beacon";
+        beacon.transform.SetParent(cacheObject.transform, false);
+        beacon.transform.localPosition = new Vector3(0f, 0.86f, 0f);
+        beacon.transform.localScale = new Vector3(0.18f, 0.65f, 0.18f);
+
+        Collider beaconCollider = beacon.GetComponent<Collider>();
+
+        if (beaconCollider != null)
+        {
+            if (Application.isPlaying)
+            {
+                Destroy(beaconCollider);
+            }
+            else
+            {
+                DestroyImmediate(beaconCollider);
+            }
+        }
+
+        ApplyRendererColor(beacon.GetComponent<Renderer>(), new Color(0.35f, 0.95f, 1f, 1f));
+
+        GameObject labelObject = new GameObject("RelayCache_Label");
+        labelObject.transform.SetParent(cacheObject.transform, false);
+        labelObject.transform.localPosition = new Vector3(0f, 1.5f, 0f);
+
+        TextMesh label = labelObject.AddComponent<TextMesh>();
+        label.text = labelText;
+        label.fontSize = 34;
+        label.characterSize = 0.055f;
+        label.anchor = TextAnchor.MiddleCenter;
+        label.alignment = TextAlignment.Center;
+        label.color = new Color(0.5f, 0.98f, 1f, 1f);
+
+        EnsureLookupCaches();
+        spawnedResourceCells.Add(cell);
+        spawnedResourceLookup.Add(cell);
+    }
+
     void ApplyResourcePlaceholderVisuals(GameObject resourceObject, ItemType itemType, string sourceContext)
     {
         if (resourceObject == null)
@@ -1249,6 +1458,18 @@ public class GeneratedWorldSpawner : MonoBehaviour
             RecordRequiredChainCell(nodeType, cell);
             SpawnLocalGridLandmarkContent(node);
             SpawnLocalGridLandmarkSite(node);
+
+            if (spawnSignalRelayRestorationPrototype && nodeType == InfrastructureNodeType.SignalRelay)
+            {
+                SignalRelayRestorationController controller = spawnedObject.GetComponent<SignalRelayRestorationController>();
+
+                if (controller == null)
+                {
+                    controller = spawnedObject.AddComponent<SignalRelayRestorationController>();
+                }
+
+                controller.Configure(node);
+            }
         }
     }
 

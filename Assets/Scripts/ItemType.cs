@@ -5,5 +5,10 @@ public enum ItemType
     CoreFragment,
     RepairKit,
     MobilityPatch,
-    SensorPatch
+    SensorPatch,
+    CircuitScrap,
+    EnergyCell,
+    SignalProcessor,
+    ConduitComponents,
+    StabilizerModule
 }

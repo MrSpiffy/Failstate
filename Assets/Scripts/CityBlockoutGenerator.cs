@@ -773,6 +773,15 @@ public class CityBlockoutGenerator : MonoBehaviour
         return CellToWorld(cell.x, cell.y, yPosition);
     }
 
+    public bool TryWorldToCell(Vector3 worldPosition, out Vector2Int cell)
+    {
+        Vector3 local = worldPosition - transform.position;
+        float gridX = (local.x + width * cellSize * 0.5f) / cellSize;
+        float gridY = (local.z + height * cellSize * 0.5f) / cellSize;
+        cell = new Vector2Int(Mathf.FloorToInt(gridX), Mathf.FloorToInt(gridY));
+        return cell.x >= 0 && cell.x < width && cell.y >= 0 && cell.y < height;
+    }
+
     public bool IsCellNearBase(Vector2Int cell, float radius)
     {
         return Vector2Int.Distance(cell, GetBaseCell()) <= radius;

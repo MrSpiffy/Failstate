@@ -68,6 +68,11 @@ public class InfrastructureNode : MonoBehaviour
 
     void Update()
     {
+        if (GetComponent<SignalRelayRestorationController>() != null)
+        {
+            return;
+        }
+
         GameReferences refs = GameReferences.Instance;
 
         if (refs == null || refs.playerTransform == null || refs.inputSettings == null)
@@ -165,7 +170,7 @@ public class InfrastructureNode : MonoBehaviour
         return CompleteRestoration(refs);
     }
 
-    bool CompleteRestoration(GameReferences refs)
+    public bool CompleteRestoration(GameReferences refs)
     {
         restored = true;
         ApplyRestoredEffects(refs);

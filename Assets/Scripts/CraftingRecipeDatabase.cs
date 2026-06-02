@@ -30,6 +30,17 @@ public static class CraftingRecipeDatabase
                 {
                     new ItemCost(ItemType.CoreFragment, 2)
                 }
+            ),
+
+            new CraftingRecipe(
+                ItemType.StabilizerModule,
+                1,
+                new ItemCost[]
+                {
+                    new ItemCost(ItemType.MetalScrap, 2),
+                    new ItemCost(ItemType.CircuitScrap, 2),
+                    new ItemCost(ItemType.EnergyCell, 1)
+                }
             )
         };
     }
