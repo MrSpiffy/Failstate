@@ -10,6 +10,9 @@ public class RelayRestorationController : MonoBehaviour
     public Color restoringColor = new Color(0.75f, 0.62f, 0.22f, 1f);
     public Color restoredColor = new Color(0.26f, 0.95f, 1f, 1f);
     public Color missingColor = new Color(0.85f, 0.18f, 0.12f, 1f);
+    public Color relayMetalColor = new Color(0.07f, 0.075f, 0.07f, 1f);
+    public Color wornMetalColor = new Color(0.18f, 0.17f, 0.15f, 1f);
+    public Color dormantSignalColor = new Color(0.55f, 0.08f, 0.05f, 1f);
 
     private bool diagnosticsRun = false;
     private int installStepIndex = 0;
@@ -20,7 +23,12 @@ public class RelayRestorationController : MonoBehaviour
     private bool[] activationNodeComplete = new bool[0];
     private Light restoredLight;
     private Transform rotatingRing;
+    private Transform lowerRing;
     private Transform antenna;
+    private Transform centralCore;
+    private Transform[] restorationGlowSegments = new Transform[0];
+    private Transform[] dormantFaultLights = new Transform[0];
+    private Transform[] mechanicalFrame = new Transform[0];
     private float antennaExtension = 0f;
 
     void Awake()
@@ -389,17 +397,20 @@ public class RelayRestorationController : MonoBehaviour
     {
         RemoveRepairVisuals();
 
+        BuildRelayMachineBody();
+
         int installCount = GetInstallStepCount();
         installPanels = new Transform[installCount];
 
         for (int i = 0; i < installCount; i++)
         {
             float offset = installCount == 1 ? 0f : Mathf.Lerp(-1.25f, 1.25f, i / Mathf.Max(1f, installCount - 1f));
+            float sideOffset = i % 2 == 0 ? -0.45f : 0.45f;
             installPanels[i] = CreateRepairPrimitive(
                 "RelayRepair_InstallPanel_" + i,
                 PrimitiveType.Cube,
-                new Vector3(offset, 0.35f, 1.35f),
-                new Vector3(0.55f, 0.42f, 0.22f),
+                new Vector3(offset, 0.55f, 1.6f + sideOffset * 0.2f),
+                new Vector3(0.62f, 0.5f, 0.2f),
                 dormantColor
             ).transform;
         }
@@ -411,8 +422,8 @@ public class RelayRestorationController : MonoBehaviour
         for (int i = 0; i < activationCount; i++)
         {
             float t = activationCount == 1 ? 0.5f : i / Mathf.Max(1f, activationCount - 1f);
-            float angle = Mathf.Lerp(215f, 325f, t) * Mathf.Deg2Rad;
-            Vector3 localPosition = new Vector3(Mathf.Cos(angle) * 1.75f, 0.12f, Mathf.Sin(angle) * 1.75f);
+            float angle = Mathf.Lerp(205f, 335f, t) * Mathf.Deg2Rad;
+            Vector3 localPosition = new Vector3(Mathf.Cos(angle) * 2.05f, 0.18f, Mathf.Sin(angle) * 2.05f);
             activationNodes[i] = CreateRepairPrimitive(
                 "RelayRepair_ActivationNode_" + i,
                 GetActivationNodeShape(),
@@ -422,18 +433,26 @@ public class RelayRestorationController : MonoBehaviour
             ).transform;
         }
 
-        rotatingRing = CreateRepairPrimitive(
-            "RelayRepair_RestoredRing",
+        lowerRing = CreateRepairPrimitive(
+            "RelayRepair_LowerServiceRing",
             PrimitiveType.Cylinder,
-            new Vector3(0f, 1.75f, 0f),
+            new Vector3(0f, 0.9f, 0f),
+            new Vector3(1.05f, 0.06f, 1.05f),
+            wornMetalColor
+        ).transform;
+
+        rotatingRing = CreateRepairPrimitive(
+            "RelayRepair_UpperCageRing",
+            PrimitiveType.Cylinder,
+            new Vector3(0f, GetCageHeight(), 0f),
             GetRestoredRingScale(),
             dormantColor
         ).transform;
 
         antenna = CreateRepairPrimitive(
-            "RelayRepair_Antenna",
+            "RelayRepair_ExtendingSpire",
             PrimitiveType.Cylinder,
-            new Vector3(0f, 2.1f, 0f),
+            new Vector3(0f, GetCageHeight() + 0.25f, 0f),
             new Vector3(0.12f, 0.2f, 0.12f),
             dormantColor
         ).transform;
@@ -447,6 +466,111 @@ public class RelayRestorationController : MonoBehaviour
         restoredLight.range = GetRestoredLightRange();
         restoredLight.intensity = 0f;
         restoredLight.enabled = false;
+    }
+
+    void BuildRelayMachineBody()
+    {
+        float towerHeight = GetTowerHeight();
+        float cageHeight = GetCageHeight();
+
+        CreateRepairPrimitive(
+            "RelayRepair_BaseDais",
+            PrimitiveType.Cylinder,
+            new Vector3(0f, 0.08f, 0f),
+            new Vector3(1.65f, 0.16f, 1.65f),
+            wornMetalColor
+        );
+
+        CreateRepairPrimitive(
+            "RelayRepair_ServicePlinth",
+            PrimitiveType.Cylinder,
+            new Vector3(0f, 0.28f, 0f),
+            new Vector3(0.95f, 0.26f, 0.95f),
+            relayMetalColor
+        );
+
+        CreateRepairPrimitive(
+            "RelayRepair_MainColumn",
+            PrimitiveType.Cylinder,
+            new Vector3(0f, 0.55f + towerHeight * 0.5f, 0f),
+            new Vector3(0.42f, towerHeight, 0.42f),
+            relayMetalColor
+        );
+
+        centralCore = CreateRepairPrimitive(
+            "RelayRepair_VerticalCore",
+            PrimitiveType.Cube,
+            new Vector3(0f, 0.55f + towerHeight * 0.52f, -0.44f),
+            new Vector3(0.18f, towerHeight * 0.74f, 0.08f),
+            dormantSignalColor
+        ).transform;
+
+        restorationGlowSegments = new Transform[3];
+        for (int i = 0; i < restorationGlowSegments.Length; i++)
+        {
+            float angle = (90f + i * 120f) * Mathf.Deg2Rad;
+            restorationGlowSegments[i] = CreateRepairPrimitive(
+                "RelayRepair_CoreGlowSegment_" + i,
+                PrimitiveType.Cube,
+                new Vector3(Mathf.Cos(angle) * 0.47f, 0.72f + towerHeight * 0.5f, Mathf.Sin(angle) * 0.47f),
+                new Vector3(0.1f, towerHeight * 0.55f, 0.08f),
+                dormantSignalColor
+            ).transform;
+            restorationGlowSegments[i].localRotation = Quaternion.Euler(0f, -angle * Mathf.Rad2Deg, 0f);
+        }
+
+        mechanicalFrame = new Transform[12];
+        int frameIndex = 0;
+
+        for (int i = 0; i < 6; i++)
+        {
+            float angle = i * 60f * Mathf.Deg2Rad;
+            Vector3 foot = new Vector3(Mathf.Cos(angle) * 0.9f, 0.5f, Mathf.Sin(angle) * 0.9f);
+            Vector3 crown = new Vector3(Mathf.Cos(angle) * 0.68f, cageHeight, Mathf.Sin(angle) * 0.68f);
+            mechanicalFrame[frameIndex++] = CreateBarBetween("RelayRepair_CageStrut_" + i, foot, crown, 0.07f, relayMetalColor).transform;
+        }
+
+        for (int i = 0; i < 6; i++)
+        {
+            float angle = (30f + i * 60f) * Mathf.Deg2Rad;
+            Vector3 basePoint = new Vector3(Mathf.Cos(angle) * 1.35f, 0.18f, Mathf.Sin(angle) * 1.35f);
+            Vector3 columnPoint = new Vector3(Mathf.Cos(angle) * 0.48f, 0.75f, Mathf.Sin(angle) * 0.48f);
+            mechanicalFrame[frameIndex++] = CreateBarBetween("RelayRepair_GroundCable_" + i, basePoint, columnPoint, 0.045f, relayMetalColor).transform;
+        }
+
+        dormantFaultLights = new Transform[3];
+        for (int i = 0; i < dormantFaultLights.Length; i++)
+        {
+            float angle = (45f + i * 120f) * Mathf.Deg2Rad;
+            dormantFaultLights[i] = CreateRepairPrimitive(
+                "RelayRepair_FaultLamp_" + i,
+                PrimitiveType.Cube,
+                new Vector3(Mathf.Cos(angle) * 0.82f, 0.82f, Mathf.Sin(angle) * 0.82f),
+                new Vector3(0.12f, 0.12f, 0.08f),
+                dormantSignalColor
+            ).transform;
+            dormantFaultLights[i].localRotation = Quaternion.Euler(0f, -angle * Mathf.Rad2Deg, 0f);
+        }
+    }
+
+    GameObject CreateBarBetween(string objectName, Vector3 localStart, Vector3 localEnd, float thickness, Color color)
+    {
+        Vector3 midpoint = (localStart + localEnd) * 0.5f;
+        Vector3 delta = localEnd - localStart;
+        GameObject bar = CreateRepairPrimitive(
+            objectName,
+            PrimitiveType.Cube,
+            midpoint,
+            new Vector3(thickness, Mathf.Max(0.01f, delta.magnitude * 0.5f), thickness),
+            color
+        );
+
+        if (delta.sqrMagnitude > 0.0001f)
+        {
+            bar.transform.localRotation = Quaternion.FromToRotation(Vector3.up, delta.normalized);
+        }
+
+        return bar;
     }
 
     GameObject CreateRepairPrimitive(string objectName, PrimitiveType type, Vector3 localPosition, Vector3 localScale, Color color)
@@ -502,6 +626,9 @@ public class RelayRestorationController : MonoBehaviour
         Color color = state == RelayRestorationState.Restored
             ? GetRestoredColor()
             : state == RelayRestorationState.Restoring ? restoringColor : dormantColor;
+        Color signalColor = state == RelayRestorationState.Restored
+            ? GetRestoredColor()
+            : state == RelayRestorationState.Restoring ? restoringColor : dormantSignalColor;
 
         for (int i = 0; i < installPanels.Length; i++)
         {
@@ -513,8 +640,25 @@ public class RelayRestorationController : MonoBehaviour
             ApplyRendererColor(activationNodes[i], activationNodeComplete[i] ? GetRestoredColor() : color);
         }
 
-        ApplyRendererColor(rotatingRing, color);
-        ApplyRendererColor(antenna, color);
+        ApplyRendererColor(rotatingRing, state == RelayRestorationState.Restored ? GetRestoredColor() : wornMetalColor);
+        ApplyRendererColor(lowerRing, state == RelayRestorationState.Restored ? GetRestoredColor() : wornMetalColor);
+        ApplyRendererColor(antenna, state == RelayRestorationState.Restored ? GetRestoredColor() : relayMetalColor);
+        ApplyRendererColor(centralCore, signalColor);
+
+        for (int i = 0; i < restorationGlowSegments.Length; i++)
+        {
+            ApplyRendererColor(restorationGlowSegments[i], signalColor);
+        }
+
+        for (int i = 0; i < dormantFaultLights.Length; i++)
+        {
+            ApplyRendererColor(dormantFaultLights[i], state == RelayRestorationState.Restored ? GetRestoredColor() : dormantSignalColor);
+        }
+
+        for (int i = 0; i < mechanicalFrame.Length; i++)
+        {
+            ApplyRendererColor(mechanicalFrame[i], state == RelayRestorationState.Restored ? wornMetalColor : relayMetalColor);
+        }
 
         if (restoredLight != null)
         {
@@ -542,7 +686,7 @@ public class RelayRestorationController : MonoBehaviour
             Vector3 scale = antenna.localScale;
             scale.y = Mathf.Lerp(0.2f, GetAntennaHeight(), antennaExtension);
             antenna.localScale = scale;
-            antenna.localPosition = new Vector3(0f, 2.1f + scale.y * 0.5f, 0f);
+            antenna.localPosition = new Vector3(0f, GetCageHeight() + 0.25f + scale.y * 0.5f, 0f);
         }
     }
 
@@ -564,7 +708,23 @@ public class RelayRestorationController : MonoBehaviour
         targetRenderer.GetPropertyBlock(block);
         block.SetColor("_BaseColor", color);
         block.SetColor("_Color", color);
+        block.SetColor("_EmissionColor", GetEmissionColor(color));
         targetRenderer.SetPropertyBlock(block);
+    }
+
+    Color GetEmissionColor(Color color)
+    {
+        if (state == RelayRestorationState.Restored)
+        {
+            return color * 1.2f;
+        }
+
+        if (state == RelayRestorationState.Restoring)
+        {
+            return color * 0.45f;
+        }
+
+        return color * 0.18f;
     }
 
     void FlashTarget(Transform target, Color color)
@@ -666,15 +826,35 @@ public class RelayRestorationController : MonoBehaviour
     {
         if (GetNodeType() == InfrastructureNodeType.TransitLift)
         {
-            return new Vector3(0.95f, 0.08f, 0.95f);
+            return new Vector3(1.08f, 0.08f, 1.08f);
         }
 
         if (GetNodeType() == InfrastructureNodeType.PowerJunction)
         {
-            return new Vector3(0.85f, 0.07f, 0.85f);
+            return new Vector3(0.98f, 0.07f, 0.98f);
         }
 
-        return new Vector3(0.7f, 0.06f, 0.7f);
+        return new Vector3(0.88f, 0.06f, 0.88f);
+    }
+
+    float GetTowerHeight()
+    {
+        switch (GetNodeType())
+        {
+            case InfrastructureNodeType.TransitLift:
+                return 2.2f;
+
+            case InfrastructureNodeType.PowerJunction:
+                return 1.9f;
+
+            default:
+                return 1.65f;
+        }
+    }
+
+    float GetCageHeight()
+    {
+        return 0.85f + GetTowerHeight();
     }
 
     Color GetRestoredColor()
