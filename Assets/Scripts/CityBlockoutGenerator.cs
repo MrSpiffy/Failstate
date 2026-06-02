@@ -2525,6 +2525,7 @@ public class CityBlockoutGenerator : MonoBehaviour
                     false,
                     0.12f + sectorIndex * 0.03f);
 
+                CarveResourceOpportunityApproaches(opportunity, sector.relayCell, sectorIndex);
                 if (i > 0 && !ShouldUseTemplateGuidedLayout())
                 {
                     CarveRouteBetweenCells(
@@ -2618,11 +2619,32 @@ public class CityBlockoutGenerator : MonoBehaviour
 
         CarveStraightServiceSegment(anchor - lateral * halfWidth, anchor + lateral * halfWidth, sideStreetRadius, sideStreetCells);
         CarveStraightServiceSegment(anchor - radial * halfHeight, anchor + radial * halfHeight, alleyRadius, alleyCells);
+        CarveLandmarkIntersection(anchor, radial, lateral, sectorIndex, landmarkIndex);
 
         if (sectorIndex > 0)
         {
             Vector2Int serviceBend = anchor + radial * halfHeight + lateral * (landmarkIndex % 2 == 0 ? 2 : -2);
             CarveRouteBetweenCells(anchor + radial * halfHeight, serviceBend, alleyRadius, alleyCells, false, 0.45f);
+        }
+    }
+
+    void CarveLandmarkIntersection(Vector2Int anchor, Vector2Int radial, Vector2Int lateral, int sectorIndex, int landmarkIndex)
+    {
+        int spurCount = sectorIndex == 0 ? 1 : sectorIndex == 1 ? 2 : 3;
+        Vector2Int[] directions =
+        {
+            radial,
+            -radial,
+            lateral,
+            -lateral
+        };
+
+        for (int i = 0; i < spurCount && i < directions.Length; i++)
+        {
+            Vector2Int direction = directions[(i + landmarkIndex) % directions.Length];
+            int length = sectorIndex == 0 ? 2 : sectorIndex == 1 ? 3 : 4;
+            List<Vector2Int> category = i == 0 ? sideStreetCells : alleyCells;
+            CarveStraightServiceSegment(anchor, anchor + direction * length, category == sideStreetCells ? sideStreetRadius : alleyRadius, category);
         }
     }
 
@@ -2811,9 +2833,42 @@ public class CityBlockoutGenerator : MonoBehaviour
         }
     }
 
+    void CarveResourceOpportunityApproaches(Vector2Int center, Vector2Int sectorRelayCell, int sectorIndex)
+    {
+        Vector2Int radial = GetDominantCardinalDirection(center - sectorRelayCell);
+
+        if (radial == Vector2Int.zero)
+        {
+            radial = GetDominantCardinalDirection(center - GetBaseCell());
+        }
+
+        Vector2Int lateral = new Vector2Int(-radial.y, radial.x);
+        int approachCount = sectorIndex == 0 ? 2 : 3;
+        int approachLength = sectorIndex == 0 ? 3 : sectorIndex == 1 ? 4 : 5;
+        Vector2Int[] approachDirections =
+        {
+            lateral,
+            -lateral,
+            -radial
+        };
+
+        for (int i = 0; i < approachCount; i++)
+        {
+            Vector2Int start = center + approachDirections[i] * approachLength;
+
+            if (!IsCellInsideStarterArea(start.x, start.y))
+            {
+                continue;
+            }
+
+            List<Vector2Int> category = i == 0 ? sideStreetCells : alleyCells;
+            CarveBentLocalConnector(start, center, category == sideStreetCells ? sideStreetRadius : alleyRadius, category, i + sectorIndex);
+        }
+    }
+
     void CarveResourceOpportunityAlleys(Vector2Int center, int sectorIndex)
     {
-        int branchCount = sectorIndex == 0 ? 1 : sectorIndex == 1 ? 2 : 3;
+        int branchCount = sectorIndex == 0 ? 0 : sectorIndex == 1 ? 1 : 2;
         int maxLength = sectorIndex == 0 ? 3 : sectorIndex == 1 ? 4 : 5;
 
         for (int i = 0; i < branchCount; i++)
@@ -3269,11 +3324,30 @@ public class CityBlockoutGenerator : MonoBehaviour
                 continue;
             }
 
-            CarveRouteBetweenCells(start, target, alleyRadius, alleyCells, true, 0.54f + sectorIndex * 0.05f);
+            CarveAlleyShortcutPath(start, target, sectorIndex);
             return true;
         }
 
         return false;
+    }
+
+    void CarveAlleyShortcutPath(Vector2Int start, Vector2Int target, int sectorIndex)
+    {
+        Vector2Int delta = target - start;
+        Vector2Int dominant = GetDominantCardinalDirection(delta);
+        Vector2Int lateral = new Vector2Int(-dominant.y, dominant.x);
+        Vector2Int bend = new Vector2Int(
+            Mathf.RoundToInt((start.x + target.x) * 0.5f),
+            Mathf.RoundToInt((start.y + target.y) * 0.5f)
+        ) + lateral * (Random.value < 0.5f ? 2 : -2);
+
+        if (!IsCellInsideStarterArea(bend.x, bend.y))
+        {
+            bend = start + dominant * Mathf.Max(2, Mathf.RoundToInt(Vector2Int.Distance(start, target) * 0.45f));
+        }
+
+        CarveMazeLikePath(start, GetDominantCardinalDirection(bend - start), Mathf.Max(2, Mathf.RoundToInt(Vector2Int.Distance(start, bend))), alleyRadius, alleyCells, 0.72f, true);
+        CarveMazeLikePath(bend, GetDominantCardinalDirection(target - bend), Mathf.Max(2, Mathf.RoundToInt(Vector2Int.Distance(bend, target))), alleyRadius, alleyCells, 0.78f, true);
     }
 
     bool HasMostlyDirectWalkableConnection(Vector2Int start, Vector2Int target)
@@ -3597,26 +3671,69 @@ public class CityBlockoutGenerator : MonoBehaviour
         }
 
         Vector2Int lateral = new Vector2Int(-radial.y, radial.x);
-        int halfWidth = sectorIndex == 0 ? 4 : sectorIndex == 1 ? 5 : 6;
+        int halfWidth = sectorIndex == 0 ? 3 : sectorIndex == 1 ? 5 : 6;
         int halfHeight = sectorIndex == 0 ? 3 : sectorIndex == 1 ? 4 : 5;
 
-        CarveNeighborhoodBlockLoop(center, halfWidth, halfHeight, sectorIndex, false);
+        CarveOrganicNeighborhoodLoop(center, radial, lateral, halfWidth, halfHeight, sectorIndex, 0);
         CarveStraightServiceSegment(center - lateral * halfWidth, center + lateral * halfWidth, sideStreetRadius, sideStreetCells);
+        CarveLocalReturnLoop(center, radial, lateral, halfWidth, halfHeight, sectorIndex);
 
         if (sectorIndex > 0)
         {
-            Vector2Int secondaryCenter = center + radial * (halfHeight + 4);
-            CarveNeighborhoodBlockLoop(secondaryCenter, Mathf.Max(3, halfWidth - 1), Mathf.Max(3, halfHeight - 1), sectorIndex, false);
-            CarveStraightServiceSegment(center + radial * halfHeight, secondaryCenter - radial * (halfHeight - 1), sideStreetRadius, sideStreetCells);
+            Vector2Int secondaryCenter = center + radial * (halfHeight + 4) + lateral * (Random.value < 0.5f ? 1 : -1);
+            CarveOrganicNeighborhoodLoop(secondaryCenter, radial, lateral, Mathf.Max(3, halfWidth - 1), Mathf.Max(3, halfHeight - 1), sectorIndex, 1);
+            CarveBentLocalConnector(center + radial * halfHeight, secondaryCenter - radial * (halfHeight - 1), sideStreetRadius, sideStreetCells, sectorIndex);
         }
 
         if (sectorIndex == 2)
         {
             Vector2Int alleyStart = center - radial * halfHeight;
             Vector2Int alleyEnd = alleyStart - radial * 5;
-            CarveStraightServiceSegment(alleyStart, alleyEnd, alleyRadius, alleyCells);
-            CarveStraightServiceSegment(alleyEnd - lateral * 2, alleyEnd + lateral * 2, alleyRadius, alleyCells);
+            CarveBentLocalConnector(alleyStart, alleyEnd, alleyRadius, alleyCells, 2);
+            CarveBentLocalConnector(alleyEnd - lateral * 2, alleyEnd + lateral * 2, alleyRadius, alleyCells, 3);
         }
+    }
+
+    void CarveOrganicNeighborhoodLoop(Vector2Int center, Vector2Int radial, Vector2Int lateral, int halfWidth, int halfHeight, int sectorIndex, int variant)
+    {
+        Vector2Int offset = sectorIndex == 0
+            ? Vector2Int.zero
+            : lateral * (variant % 2 == 0 ? 1 : -1);
+        Vector2Int loopCenter = center + offset;
+        bool brokenLoop = sectorIndex == 0 && Random.value < 0.25f;
+
+        CarveNeighborhoodBlockLoop(loopCenter, halfWidth, halfHeight, sectorIndex, brokenLoop);
+
+        Vector2Int notchA = loopCenter + lateral * halfWidth + radial * (variant % 2 == 0 ? 1 : -1);
+        Vector2Int notchB = loopCenter - lateral * (Mathf.Max(2, halfWidth - 1)) - radial * halfHeight;
+        CarveStraightServiceSegment(notchA, notchA + radial * (sectorIndex == 0 ? 1 : 2), alleyRadius, alleyCells);
+
+        if (sectorIndex > 0)
+        {
+            CarveStraightServiceSegment(notchB, notchB + lateral * 2, alleyRadius, alleyCells);
+        }
+
+        if (sectorIndex == 2)
+        {
+            Vector2Int diagonalStart = loopCenter - lateral * halfWidth + radial * halfHeight;
+            Vector2Int diagonalEnd = loopCenter + lateral * Mathf.Max(2, halfWidth - 2) - radial * Mathf.Max(2, halfHeight - 2);
+            CarveBentLocalConnector(diagonalStart, diagonalEnd, alleyRadius, alleyCells, variant + 4);
+        }
+    }
+
+    void CarveLocalReturnLoop(Vector2Int center, Vector2Int radial, Vector2Int lateral, int halfWidth, int halfHeight, int sectorIndex)
+    {
+        if (sectorIndex == 0 && Random.value < 0.35f)
+        {
+            return;
+        }
+
+        Vector2Int start = center - lateral * halfWidth;
+        Vector2Int returnPoint = center + radial * (halfHeight + (sectorIndex == 2 ? 3 : 2));
+        Vector2Int end = center + lateral * halfWidth;
+
+        CarveBentLocalConnector(start, returnPoint, alleyRadius, alleyCells, sectorIndex + 5);
+        CarveBentLocalConnector(returnPoint, end, alleyRadius, alleyCells, sectorIndex + 7);
     }
 
     void CarveNeighborhoodBlockLoop(Vector2Int center, int halfWidth, int halfHeight, int sectorIndex)
@@ -3626,14 +3743,20 @@ public class CityBlockoutGenerator : MonoBehaviour
 
     void CarveNeighborhoodBlockLoop(Vector2Int center, int halfWidth, int halfHeight, int sectorIndex, bool brokenLoop)
     {
+        bool skipCornerA = sectorIndex > 0 && Random.value < 0.55f;
+        bool skipCornerB = sectorIndex == 2 && Random.value < 0.65f;
+
         for (int x = -halfWidth; x <= halfWidth; x++)
         {
-            if (!brokenLoop || x < halfWidth - 1)
+            bool atLeftCorner = x <= -halfWidth + 1;
+            bool atRightCorner = x >= halfWidth - 1;
+
+            if ((!brokenLoop || x < halfWidth - 1) && !(skipCornerA && atRightCorner))
             {
                 CarveCorridor(center + new Vector2Int(x, -halfHeight), sideStreetRadius, sideStreetCells, true);
             }
 
-            if (!brokenLoop || x > -halfWidth + 1)
+            if ((!brokenLoop || x > -halfWidth + 1) && !(skipCornerB && atLeftCorner))
             {
                 CarveCorridor(center + new Vector2Int(x, halfHeight), sideStreetRadius, sideStreetCells, true);
             }
@@ -3641,16 +3764,41 @@ public class CityBlockoutGenerator : MonoBehaviour
 
         for (int y = -halfHeight + 1; y < halfHeight; y++)
         {
-            if (!brokenLoop || y > -halfHeight + 2)
+            bool atBottomCorner = y <= -halfHeight + 2;
+            bool atTopCorner = y >= halfHeight - 2;
+
+            if ((!brokenLoop || y > -halfHeight + 2) && !(skipCornerB && atBottomCorner))
             {
                 CarveCorridor(center + new Vector2Int(-halfWidth, y), sideStreetRadius, sideStreetCells, true);
             }
 
-            if (!brokenLoop || y < halfHeight - 2)
+            if ((!brokenLoop || y < halfHeight - 2) && !(skipCornerA && atTopCorner))
             {
                 CarveCorridor(center + new Vector2Int(halfWidth, y), sideStreetRadius, sideStreetCells, true);
             }
         }
+    }
+
+    void CarveBentLocalConnector(Vector2Int start, Vector2Int end, int corridorRadius, List<Vector2Int> categoryList, int salt)
+    {
+        Vector2Int delta = end - start;
+        Vector2Int dominant = GetDominantCardinalDirection(delta);
+        Vector2Int lateral = new Vector2Int(-dominant.y, dominant.x);
+        int bendDistance = Mathf.Clamp(Mathf.Abs(delta.x) + Mathf.Abs(delta.y), 2, 7);
+        Vector2Int midpoint = new Vector2Int(
+            Mathf.RoundToInt((start.x + end.x) * 0.5f),
+            Mathf.RoundToInt((start.y + end.y) * 0.5f)
+        );
+        Vector2Int bend = midpoint + lateral * ((salt % 2 == 0 ? 1 : -1) * Mathf.Max(1, bendDistance / 4));
+
+        if (!IsCellInsideStarterArea(bend.x, bend.y))
+        {
+            CarveStraightServiceSegment(start, end, corridorRadius, categoryList);
+            return;
+        }
+
+        CarveStraightServiceSegment(start, bend, corridorRadius, categoryList);
+        CarveStraightServiceSegment(bend, end, corridorRadius, categoryList);
     }
 
     void CarveStraightServiceSegment(Vector2Int start, Vector2Int end, int corridorRadius, List<Vector2Int> categoryList)
