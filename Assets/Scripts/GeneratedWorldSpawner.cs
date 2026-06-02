@@ -34,7 +34,7 @@ public class GeneratedWorldSpawner : MonoBehaviour
     public bool spawnPowerTutorialHazard = true;
     public bool placePrimaryRelaysInCourtyards = true;
     public bool spawnSupplementalInfrastructureNodes = false;
-    public bool spawnSignalRelayRestorationPrototype = true;
+    public bool spawnRelayRestorationProgression = true;
 
     [Header("District Restoration")]
     public bool spawnDistrictRestorationVisuals = true;
@@ -208,7 +208,7 @@ public class GeneratedWorldSpawner : MonoBehaviour
         SpawnInfrastructureNodes();
         SpawnDistrictRestorationVisuals();
         SpawnOutboundSignalResources();
-        SpawnSignalRelayRestorationCaches();
+        SpawnRelayRestorationCaches();
         SpawnResources();
         SpawnHazards();
         ValidateOpeningPacing();
@@ -651,61 +651,59 @@ public class GeneratedWorldSpawner : MonoBehaviour
         return true;
     }
 
-    void SpawnSignalRelayRestorationCaches()
+    void SpawnRelayRestorationCaches()
     {
-        if (!spawnSignalRelayRestorationPrototype || !IsRecordedCell(requiredSignalCell))
+        if (!spawnRelayRestorationProgression)
         {
             return;
         }
 
-        List<Vector2Int> candidates = BuildSignalRelayCacheCandidates();
-        List<Vector2Int> usedCells = new List<Vector2Int>();
+        SpawnRestorationCachesForRelay(InfrastructureNodeType.SignalRelay, requiredSignalCell);
+        SpawnRestorationCachesForRelay(InfrastructureNodeType.PowerJunction, requiredPowerCell);
+        SpawnRestorationCachesForRelay(InfrastructureNodeType.TransitLift, requiredTransitCell);
+    }
 
-        if (TryPickSignalRelayCacheCell(candidates, usedCells, out Vector2Int processorCell))
+    void SpawnRestorationCachesForRelay(InfrastructureNodeType nodeType, Vector2Int relayCell)
+    {
+        if (!IsRecordedCell(relayCell))
         {
-            SpawnRelaySalvageCacheAtCell(
-                processorCell,
-                "signal processor depot",
-                new ItemCost[]
-                {
-                    new ItemCost(ItemType.SignalProcessor, 1),
-                    new ItemCost(ItemType.CircuitScrap, 1),
-                    new ItemCost(ItemType.MetalScrap, 1)
-                },
-                "PROC"
-            );
-            usedCells.Add(processorCell);
+            return;
         }
 
-        if (TryPickSignalRelayCacheCell(candidates, usedCells, out Vector2Int conduitCell))
+        RelayCacheDefinition[] cacheDefinitions = GetRelayCacheDefinitions(nodeType);
+        List<Vector2Int> candidates = BuildRelayCacheCandidates(nodeType, relayCell);
+        List<Vector2Int> usedCells = new List<Vector2Int>();
+
+        for (int i = 0; i < cacheDefinitions.Length; i++)
         {
+            if (!TryPickRelayCacheCell(candidates, usedCells, relayCell, out Vector2Int cacheCell))
+            {
+                continue;
+            }
+
             SpawnRelaySalvageCacheAtCell(
-                conduitCell,
-                "conduit repair alcove",
-                new ItemCost[]
-                {
-                    new ItemCost(ItemType.ConduitComponents, 1),
-                    new ItemCost(ItemType.CircuitScrap, 1),
-                    new ItemCost(ItemType.EnergyCell, 1),
-                    new ItemCost(ItemType.MetalScrap, 1)
-                },
-                "COND"
+                cacheCell,
+                cacheDefinitions[i].cacheName,
+                cacheDefinitions[i].contents,
+                cacheDefinitions[i].labelText
             );
+            usedCells.Add(cacheCell);
         }
     }
 
-    List<Vector2Int> BuildSignalRelayCacheCandidates()
+    List<Vector2Int> BuildRelayCacheCandidates(InfrastructureNodeType nodeType, Vector2Int relayCell)
     {
         List<Vector2Int> candidates = new List<Vector2Int>();
         List<Vector2Int> opportunities = city.GetResourceOpportunityCells();
+        int districtIndex = GetDistrictIndexForNodeType(nodeType);
 
         for (int i = 0; i < opportunities.Count; i++)
         {
             Vector2Int cell = opportunities[i];
 
-            if (city.GetRestorationDistrictIndex(cell) == 0 &&
-                Vector2Int.Distance(cell, requiredSignalCell) >= 4f &&
-                Vector2Int.Distance(cell, requiredSignalCell) <= 18f &&
+            if (city.GetRestorationDistrictIndex(cell) == districtIndex &&
+                Vector2Int.Distance(cell, relayCell) >= 4f &&
+                Vector2Int.Distance(cell, relayCell) <= GetRelayCacheMaximumDistance(nodeType) &&
                 IsValidResourceCell(cell))
             {
                 candidates.Add(cell);
@@ -722,14 +720,14 @@ public class GeneratedWorldSpawner : MonoBehaviour
         for (int i = 0; i < walkableCells.Count; i++)
         {
             Vector2Int cell = walkableCells[i];
-            float distance = Vector2Int.Distance(cell, requiredSignalCell);
+            float distance = Vector2Int.Distance(cell, relayCell);
 
-            if (distance < 5f || distance > 16f)
+            if (distance < 5f || distance > GetRelayCacheMaximumDistance(nodeType))
             {
                 continue;
             }
 
-            if (city.GetRestorationDistrictIndex(cell) != 0)
+            if (city.GetRestorationDistrictIndex(cell) != districtIndex)
             {
                 continue;
             }
@@ -750,7 +748,7 @@ public class GeneratedWorldSpawner : MonoBehaviour
         return candidates;
     }
 
-    bool TryPickSignalRelayCacheCell(List<Vector2Int> candidates, List<Vector2Int> usedCells, out Vector2Int selected)
+    bool TryPickRelayCacheCell(List<Vector2Int> candidates, List<Vector2Int> usedCells, Vector2Int relayCell, out Vector2Int selected)
     {
         selected = default;
         float bestScore = float.MaxValue;
@@ -764,7 +762,7 @@ public class GeneratedWorldSpawner : MonoBehaviour
                 continue;
             }
 
-            float distance = Vector2Int.Distance(cell, requiredSignalCell);
+            float distance = Vector2Int.Distance(cell, relayCell);
             float score = Mathf.Abs(distance - 9f);
 
             if (IsResourceOpportunityCell(cell))
@@ -792,6 +790,142 @@ public class GeneratedWorldSpawner : MonoBehaviour
         }
 
         return bestScore < float.MaxValue;
+    }
+
+    RelayCacheDefinition[] GetRelayCacheDefinitions(InfrastructureNodeType nodeType)
+    {
+        switch (nodeType)
+        {
+            case InfrastructureNodeType.PowerJunction:
+                return new RelayCacheDefinition[]
+                {
+                    new RelayCacheDefinition(
+                        "power regulator cabinet",
+                        "REG",
+                        new ItemCost[]
+                        {
+                            new ItemCost(ItemType.PowerRegulator, 1),
+                            new ItemCost(ItemType.Wiring, 2),
+                            new ItemCost(ItemType.EnergyCell, 1)
+                        }
+                    ),
+                    new RelayCacheDefinition(
+                        "power routing stores",
+                        "PWR",
+                        new ItemCost[]
+                        {
+                            new ItemCost(ItemType.MetalScrap, 2),
+                            new ItemCost(ItemType.Wiring, 1),
+                            new ItemCost(ItemType.EnergyCell, 1)
+                        }
+                    )
+                };
+
+            case InfrastructureNodeType.TransitLift:
+                return new RelayCacheDefinition[]
+                {
+                    new RelayCacheDefinition(
+                        "transit actuator yard",
+                        "ACT",
+                        new ItemCost[]
+                        {
+                            new ItemCost(ItemType.TransitActuator, 1),
+                            new ItemCost(ItemType.MetalScrap, 2),
+                            new ItemCost(ItemType.EnergyCell, 1)
+                        }
+                    ),
+                    new RelayCacheDefinition(
+                        "transit core vault",
+                        "CORE",
+                        new ItemCost[]
+                        {
+                            new ItemCost(ItemType.TransitCore, 1),
+                            new ItemCost(ItemType.CoreFragment, 1),
+                            new ItemCost(ItemType.CircuitScrap, 1)
+                        }
+                    ),
+                    new RelayCacheDefinition(
+                        "transit control stores",
+                        "CTRL",
+                        new ItemCost[]
+                        {
+                            new ItemCost(ItemType.MetalScrap, 1),
+                            new ItemCost(ItemType.CircuitScrap, 2),
+                            new ItemCost(ItemType.EnergyCell, 1)
+                        }
+                    )
+                };
+
+            default:
+                return new RelayCacheDefinition[]
+                {
+                    new RelayCacheDefinition(
+                        "signal processor depot",
+                        "PROC",
+                        new ItemCost[]
+                        {
+                            new ItemCost(ItemType.SignalProcessor, 1),
+                            new ItemCost(ItemType.CircuitScrap, 1),
+                            new ItemCost(ItemType.MetalScrap, 1)
+                        }
+                    ),
+                    new RelayCacheDefinition(
+                        "conduit repair alcove",
+                        "COND",
+                        new ItemCost[]
+                        {
+                            new ItemCost(ItemType.ConduitComponents, 1),
+                            new ItemCost(ItemType.CircuitScrap, 1),
+                            new ItemCost(ItemType.EnergyCell, 1),
+                            new ItemCost(ItemType.MetalScrap, 1)
+                        }
+                    )
+                };
+        }
+    }
+
+    int GetDistrictIndexForNodeType(InfrastructureNodeType nodeType)
+    {
+        switch (nodeType)
+        {
+            case InfrastructureNodeType.PowerJunction:
+                return 1;
+
+            case InfrastructureNodeType.TransitLift:
+                return 2;
+
+            default:
+                return 0;
+        }
+    }
+
+    float GetRelayCacheMaximumDistance(InfrastructureNodeType nodeType)
+    {
+        switch (nodeType)
+        {
+            case InfrastructureNodeType.TransitLift:
+                return 22f;
+
+            case InfrastructureNodeType.PowerJunction:
+                return 19f;
+
+            default:
+                return 18f;
+        }
+    }
+
+    struct RelayCacheDefinition
+    {
+        public string cacheName;
+        public string labelText;
+        public ItemCost[] contents;
+
+        public RelayCacheDefinition(string cacheName, string labelText, ItemCost[] contents)
+        {
+            this.cacheName = cacheName;
+            this.labelText = labelText;
+            this.contents = contents;
+        }
     }
 
     bool TryPickCandidateInDistanceBand(
@@ -1238,7 +1372,7 @@ public class GeneratedWorldSpawner : MonoBehaviour
         cacheObject.transform.SetParent(transform);
         cacheObject.transform.position = position;
         cacheObject.transform.localScale = new Vector3(1.15f, 0.62f, 1f);
-        cacheObject.name = "SignalRelayCache_" + cacheName.Replace(" ", "_");
+        cacheObject.name = "RelayCache_" + cacheName.Replace(" ", "_");
 
         Collider collider = cacheObject.GetComponent<Collider>();
 
@@ -1459,13 +1593,13 @@ public class GeneratedWorldSpawner : MonoBehaviour
             SpawnLocalGridLandmarkContent(node);
             SpawnLocalGridLandmarkSite(node);
 
-            if (spawnSignalRelayRestorationPrototype && nodeType == InfrastructureNodeType.SignalRelay)
+            if (spawnRelayRestorationProgression)
             {
-                SignalRelayRestorationController controller = spawnedObject.GetComponent<SignalRelayRestorationController>();
+                RelayRestorationController controller = spawnedObject.GetComponent<RelayRestorationController>();
 
                 if (controller == null)
                 {
-                    controller = spawnedObject.AddComponent<SignalRelayRestorationController>();
+                    controller = spawnedObject.AddComponent<RelayRestorationController>();
                 }
 
                 controller.Configure(node);

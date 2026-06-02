@@ -41,6 +41,29 @@ public static class CraftingRecipeDatabase
                     new ItemCost(ItemType.CircuitScrap, 2),
                     new ItemCost(ItemType.EnergyCell, 1)
                 }
+            ),
+
+            new CraftingRecipe(
+                ItemType.PowerCoupler,
+                1,
+                new ItemCost[]
+                {
+                    new ItemCost(ItemType.MetalScrap, 2),
+                    new ItemCost(ItemType.Wiring, 2),
+                    new ItemCost(ItemType.EnergyCell, 1)
+                }
+            ),
+
+            new CraftingRecipe(
+                ItemType.TransitControlModule,
+                1,
+                new ItemCost[]
+                {
+                    new ItemCost(ItemType.MetalScrap, 3),
+                    new ItemCost(ItemType.CircuitScrap, 2),
+                    new ItemCost(ItemType.CoreFragment, 1),
+                    new ItemCost(ItemType.EnergyCell, 1)
+                }
             )
         };
     }

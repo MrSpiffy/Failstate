@@ -34,7 +34,12 @@ public static class ItemDatabase
             ItemType.EnergyCell,
             ItemType.SignalProcessor,
             ItemType.ConduitComponents,
-            ItemType.StabilizerModule
+            ItemType.StabilizerModule,
+            ItemType.PowerRegulator,
+            ItemType.PowerCoupler,
+            ItemType.TransitActuator,
+            ItemType.TransitCore,
+            ItemType.TransitControlModule
         };
     }
 
@@ -66,6 +71,11 @@ public static class ItemDatabase
             case ItemType.SignalProcessor: return "signalprocessor";
             case ItemType.ConduitComponents: return "conduitcomponents";
             case ItemType.StabilizerModule: return "stabilizermodule";
+            case ItemType.PowerRegulator: return "powerregulator";
+            case ItemType.PowerCoupler: return "powercoupler";
+            case ItemType.TransitActuator: return "transitactuator";
+            case ItemType.TransitCore: return "transitcore";
+            case ItemType.TransitControlModule: return "transitcontrolmodule";
             default: return "unknown";
         }
     }
@@ -132,6 +142,30 @@ public static class ItemDatabase
             case "stabilizermodule":
                 itemType = ItemType.StabilizerModule;
                 return true;
+
+            case "powerregulator":
+            case "regulator":
+                itemType = ItemType.PowerRegulator;
+                return true;
+
+            case "powercoupler":
+            case "coupler":
+                itemType = ItemType.PowerCoupler;
+                return true;
+
+            case "transitactuator":
+            case "actuator":
+                itemType = ItemType.TransitActuator;
+                return true;
+
+            case "transitcore":
+                itemType = ItemType.TransitCore;
+                return true;
+
+            case "transitcontrolmodule":
+            case "controlmodule":
+                itemType = ItemType.TransitControlModule;
+                return true;
         }
 
         itemType = ItemType.MetalScrap;
@@ -153,6 +187,11 @@ public static class ItemDatabase
             case ItemType.SignalProcessor: return "Signal Processor";
             case ItemType.ConduitComponents: return "Conduit Components";
             case ItemType.StabilizerModule: return "Stabilizer Module";
+            case ItemType.PowerRegulator: return "Power Regulator";
+            case ItemType.PowerCoupler: return "Power Coupler";
+            case ItemType.TransitActuator: return "Transit Actuator";
+            case ItemType.TransitCore: return "Transit Core";
+            case ItemType.TransitControlModule: return "Transit Control Module";
             default: return "Unknown Item";
         }
     }
@@ -183,6 +222,16 @@ public static class ItemDatabase
                 return "Replacement couplers and conduit hardware.\n\nRequired to reconnect relay output lines.";
             case ItemType.StabilizerModule:
                 return "Workbench-built relay stabilizer.\n\nRequired to bring a damaged relay safely online.";
+            case ItemType.PowerRegulator:
+                return "Replacement regulator for a damaged power relay.\n\nRequired for Power Relay restoration.";
+            case ItemType.PowerCoupler:
+                return "Workbench-built coupler for routing restored energy flow.\n\nRequired for Power Relay restoration.";
+            case ItemType.TransitActuator:
+                return "Heavy actuator assembly for a failed transit relay frame.\n\nRequired for Transit Relay restoration.";
+            case ItemType.TransitCore:
+                return "Core control unit for a transit spine relay.\n\nRequired for Transit Relay restoration.";
+            case ItemType.TransitControlModule:
+                return "Workbench-built module that synchronizes transit control stations.\n\nRequired for Transit Relay restoration.";
             default:
                 return "No description available.";
         }

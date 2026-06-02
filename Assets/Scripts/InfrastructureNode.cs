@@ -68,7 +68,7 @@ public class InfrastructureNode : MonoBehaviour
 
     void Update()
     {
-        if (GetComponent<SignalRelayRestorationController>() != null)
+        if (GetComponent<RelayRestorationController>() != null)
         {
             return;
         }

@@ -117,9 +117,12 @@ public class FirstRunObjectiveManager : MonoBehaviour
             return "OBJECTIVE: scan for further infrastructure signals";
         }
 
-        if (nearest.nodeType == InfrastructureNodeType.SignalRelay)
+        RelayRestorationController relayRestoration = nearest.GetComponent<RelayRestorationController>();
+
+        if (relayRestoration != null)
         {
-            return GetSignalRelayObjectiveText(nearest, playerPosition, inventory, restoredCount, chainLength);
+            return relayRestoration.GetObjectiveText(playerPosition, inventory, restoredCount, chainLength) + "\n" +
+                   networkManager.GetRequiredChainText();
         }
 
         string affordability = inventory != null && inventory.CanAfford(nearest.repairCosts)

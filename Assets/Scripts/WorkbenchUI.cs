@@ -228,22 +228,32 @@ public class WorkbenchUI : MonoBehaviour
             playerInventory.AddItem(recipe.outputItem, recipe.outputAmount);
             Debug.Log("Crafted " + recipe.outputAmount + " " + ItemDatabase.GetDisplayName(recipe.outputItem));
 
-            if (recipe.outputItem == ItemType.StabilizerModule)
+            if (IsRelayCraftingItem(recipe.outputItem))
             {
                 FirstRunObjectiveManager objectiveManager = FindFirstObjectByType<FirstRunObjectiveManager>();
 
-                if (objectiveManager != null)
+                if (objectiveManager != null && recipe.outputItem == ItemType.StabilizerModule)
                 {
                     objectiveManager.NotifyStabilizerModuleCrafted();
                 }
 
                 if (SystemMessageUI.Instance != null)
                 {
-                    SystemMessageUI.Instance.ShowMessage("STABILIZER MODULE ASSEMBLED\nReturn to the Signal Relay and install the module.", 4.5f);
+                    SystemMessageUI.Instance.ShowMessage(
+                        ItemDatabase.GetDisplayName(recipe.outputItem).ToUpperInvariant() + " ASSEMBLED\nReturn to the active relay and install the component.",
+                        4.5f
+                    );
                 }
             }
         }
 
         UpdateRecipeDisplay();
+    }
+
+    bool IsRelayCraftingItem(ItemType itemType)
+    {
+        return itemType == ItemType.StabilizerModule ||
+               itemType == ItemType.PowerCoupler ||
+               itemType == ItemType.TransitControlModule;
     }
 }

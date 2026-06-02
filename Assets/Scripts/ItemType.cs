@@ -10,5 +10,10 @@ public enum ItemType
     EnergyCell,
     SignalProcessor,
     ConduitComponents,
-    StabilizerModule
+    StabilizerModule,
+    PowerRegulator,
+    PowerCoupler,
+    TransitActuator,
+    TransitCore,
+    TransitControlModule
 }

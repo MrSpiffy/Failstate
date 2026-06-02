@@ -61,7 +61,7 @@ public class RelaySalvageCache : MonoBehaviour
     {
         cacheName = displayName;
         contents = cacheContents;
-        gameObject.name = "SignalRelayCache_" + displayName.Replace(" ", "_");
+        gameObject.name = "RelayCache_" + displayName.Replace(" ", "_");
     }
 
     void Loot(GameReferences refs)
