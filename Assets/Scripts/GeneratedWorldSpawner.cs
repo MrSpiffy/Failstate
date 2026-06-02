@@ -1297,13 +1297,13 @@ public class GeneratedWorldSpawner : MonoBehaviour
         switch (nodeType)
         {
             case InfrastructureNodeType.PowerJunction:
-                return new Color(1f, 0.72f, 0.24f, 1f);
+                return new Color(0.2f, 0.68f, 1f, 1f);
 
             case InfrastructureNodeType.TransitLift:
-                return new Color(0.72f, 0.46f, 1f, 1f);
+                return new Color(0.42f, 0.84f, 1f, 1f);
 
             default:
-                return new Color(0.32f, 0.95f, 0.86f, 1f);
+                return new Color(0.18f, 0.95f, 1f, 1f);
         }
     }
 

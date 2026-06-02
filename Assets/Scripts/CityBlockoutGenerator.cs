@@ -188,6 +188,9 @@ public class CityBlockoutGenerator : MonoBehaviour
     [SerializeField] private List<Vector2Int> savedAlleyCells = new List<Vector2Int>();
     [SerializeField] private List<Vector2Int> savedStarterAreaCells = new List<Vector2Int>();
     [SerializeField] private List<Vector2Int> savedResourceOpportunityCells = new List<Vector2Int>();
+    [SerializeField] private List<Vector2Int> savedSignalDistrictCells = new List<Vector2Int>();
+    [SerializeField] private List<Vector2Int> savedPowerDistrictCells = new List<Vector2Int>();
+    [SerializeField] private List<Vector2Int> savedTransitDistrictCells = new List<Vector2Int>();
     [SerializeField] private Vector2Int savedBaseCell = new Vector2Int(-1, -1);
     [SerializeField] private Vector2Int savedOpeningSignalCourtyardCell = new Vector2Int(-1, -1);
     [SerializeField] private Vector2Int savedOpeningPowerCourtyardCell = new Vector2Int(-1, -1);
@@ -198,6 +201,9 @@ public class CityBlockoutGenerator : MonoBehaviour
     private readonly HashSet<Vector2Int> sideStreetCellLookup = new HashSet<Vector2Int>();
     private readonly HashSet<Vector2Int> alleyCellLookup = new HashSet<Vector2Int>();
     private readonly HashSet<Vector2Int> starterAreaCellLookup = new HashSet<Vector2Int>();
+    private readonly HashSet<Vector2Int> signalDistrictCellLookup = new HashSet<Vector2Int>();
+    private readonly HashSet<Vector2Int> powerDistrictCellLookup = new HashSet<Vector2Int>();
+    private readonly HashSet<Vector2Int> transitDistrictCellLookup = new HashSet<Vector2Int>();
     private bool lookupCachesValid = false;
 
     [Header("Map Size")]
@@ -423,6 +429,26 @@ public class CityBlockoutGenerator : MonoBehaviour
         return new List<Vector2Int>(savedResourceOpportunityCells);
     }
 
+    public List<Vector2Int> GetRestorationDistrictCells(int districtIndex)
+    {
+        if (districtIndex == 0)
+        {
+            return new List<Vector2Int>(savedSignalDistrictCells);
+        }
+
+        if (districtIndex == 1)
+        {
+            return new List<Vector2Int>(savedPowerDistrictCells);
+        }
+
+        if (districtIndex == 2)
+        {
+            return new List<Vector2Int>(savedTransitDistrictCells);
+        }
+
+        return new List<Vector2Int>();
+    }
+
     public List<Vector2Int> GetCourtyardAnchorCells()
     {
         EnsureLookupCaches();
@@ -537,6 +563,23 @@ public class CityBlockoutGenerator : MonoBehaviour
         if (!HasGeneratedMap() || IsCellNearBase(cell, restorationDistrictInnerRadius))
         {
             return -1;
+        }
+
+        EnsureLookupCaches();
+
+        if (signalDistrictCellLookup.Contains(cell))
+        {
+            return 0;
+        }
+
+        if (powerDistrictCellLookup.Contains(cell))
+        {
+            return 1;
+        }
+
+        if (transitDistrictCellLookup.Contains(cell))
+        {
+            return 2;
         }
 
         Vector2Int[] anchors =
@@ -783,6 +826,7 @@ public class CityBlockoutGenerator : MonoBehaviour
         savedAlleyCells.Clear();
         savedStarterAreaCells.Clear();
         savedResourceOpportunityCells.Clear();
+        ClearSavedRestorationDistrictCells();
         plazaCenters.Clear();
         savedOpeningSignalCourtyardCell = new Vector2Int(-1, -1);
         savedOpeningPowerCourtyardCell = new Vector2Int(-1, -1);
@@ -833,6 +877,7 @@ public class CityBlockoutGenerator : MonoBehaviour
         }
 
         ConnectDisconnectedWalkableAreas();
+        BuildRestorationDistrictOwnership();
 
         CreateFloor();
         CreateBuildings();
@@ -945,11 +990,13 @@ public class CityBlockoutGenerator : MonoBehaviour
             openingSignalCourtyardRadius = 5;
             openingPowerCourtyardRadius = 6;
             openingTransitCourtyardRadius = 6;
-            deadEndCount = 18;
+            mainStreetRadius = 1;
+            deadEndCount = 12;
             districtCoveragePasses = 0;
-            structuredSideStreetConnectorCount = 3;
+            structuredSideStreetConnectorCount = 2;
             maxNearbyWalkableCells = 1;
             loopConnectionChance = 0.015f;
+            sectorServiceSpokeCount = 1;
         }
     }
     [ContextMenu("Clear City Blockout")]
@@ -983,6 +1030,7 @@ public class CityBlockoutGenerator : MonoBehaviour
         savedAlleyCells.Clear();
         savedStarterAreaCells.Clear();
         savedResourceOpportunityCells.Clear();
+        ClearSavedRestorationDistrictCells();
         plazaCenters.Clear();
         savedOpeningSignalCourtyardCell = new Vector2Int(-1, -1);
         savedOpeningPowerCourtyardCell = new Vector2Int(-1, -1);
@@ -1010,6 +1058,9 @@ public class CityBlockoutGenerator : MonoBehaviour
         RebuildLookupCache(savedSideStreetCells, sideStreetCellLookup);
         RebuildLookupCache(savedAlleyCells, alleyCellLookup);
         RebuildLookupCache(savedStarterAreaCells, starterAreaCellLookup);
+        RebuildLookupCache(savedSignalDistrictCells, signalDistrictCellLookup);
+        RebuildLookupCache(savedPowerDistrictCells, powerDistrictCellLookup);
+        RebuildLookupCache(savedTransitDistrictCells, transitDistrictCellLookup);
         lookupCachesValid = true;
     }
 
@@ -1023,6 +1074,129 @@ public class CityBlockoutGenerator : MonoBehaviour
         }
     }
 
+    void ClearSavedRestorationDistrictCells()
+    {
+        savedSignalDistrictCells.Clear();
+        savedPowerDistrictCells.Clear();
+        savedTransitDistrictCells.Clear();
+        signalDistrictCellLookup.Clear();
+        powerDistrictCellLookup.Clear();
+        transitDistrictCellLookup.Clear();
+    }
+
+    void BuildRestorationDistrictOwnership()
+    {
+        ClearSavedRestorationDistrictCells();
+
+        if (savedStarterAreaCells.Count == 0)
+        {
+            return;
+        }
+
+        for (int i = 0; i < savedStarterAreaCells.Count; i++)
+        {
+            Vector2Int cell = savedStarterAreaCells[i];
+
+            if (IsCellNearBase(cell, restorationDistrictInnerRadius))
+            {
+                continue;
+            }
+
+            int districtIndex = PickRestorationDistrictIndex(cell);
+
+            if (districtIndex >= 0)
+            {
+                AddRestorationDistrictCell(cell, districtIndex);
+            }
+        }
+    }
+
+    int PickRestorationDistrictIndex(Vector2Int cell)
+    {
+        int districtCount = Mathf.Max(3, plannedRelaySectorCells.Count);
+        int bestIndex = -1;
+        float bestScore = float.MaxValue;
+
+        for (int i = 0; i < districtCount && i < 3; i++)
+        {
+            Vector2Int anchor = GetRestorationDistrictAnchorCell(i);
+
+            if (!IsSavedOpeningCourtyardCell(anchor))
+            {
+                continue;
+            }
+
+            float score = Mathf.Abs(cell.x - anchor.x) + Mathf.Abs(cell.y - anchor.y);
+
+            if (activeStarterAreaLayoutPlan != null && i < activeStarterAreaLayoutPlan.sectors.Count)
+            {
+                StarterAreaSectorPlan sector = activeStarterAreaLayoutPlan.sectors[i];
+                score = Mathf.Min(score, Mathf.Abs(cell.x - sector.relayCell.x) + Mathf.Abs(cell.y - sector.relayCell.y) + 3f);
+
+                for (int n = 0; n < sector.neighborhoodCells.Count; n++)
+                {
+                    Vector2Int neighborhood = sector.neighborhoodCells[n];
+                    score = Mathf.Min(score, Mathf.Abs(cell.x - neighborhood.x) + Mathf.Abs(cell.y - neighborhood.y) + 8f);
+                }
+
+                for (int p = 0; p < sector.resourceOpportunityCells.Count; p++)
+                {
+                    Vector2Int opportunity = sector.resourceOpportunityCells[p];
+                    score = Mathf.Min(score, Mathf.Abs(cell.x - opportunity.x) + Mathf.Abs(cell.y - opportunity.y) + 10f);
+                }
+            }
+
+            score += i * 0.35f;
+
+            if (score < bestScore)
+            {
+                bestScore = score;
+                bestIndex = i;
+            }
+        }
+
+        return bestIndex;
+    }
+
+    Vector2Int GetRestorationDistrictAnchorCell(int districtIndex)
+    {
+        if (districtIndex == 0 && IsSavedOpeningCourtyardCell(savedOpeningSignalCourtyardCell))
+        {
+            return savedOpeningSignalCourtyardCell;
+        }
+
+        if (districtIndex == 1 && IsSavedOpeningCourtyardCell(savedOpeningPowerCourtyardCell))
+        {
+            return savedOpeningPowerCourtyardCell;
+        }
+
+        if (districtIndex == 2 && IsSavedOpeningCourtyardCell(savedOpeningTransitCourtyardCell))
+        {
+            return savedOpeningTransitCourtyardCell;
+        }
+
+        if (districtIndex >= 0 && districtIndex < plannedRelaySectorCells.Count)
+        {
+            return plannedRelaySectorCells[districtIndex];
+        }
+
+        return new Vector2Int(-1, -1);
+    }
+
+    void AddRestorationDistrictCell(Vector2Int cell, int districtIndex)
+    {
+        List<Vector2Int> target = districtIndex == 0
+            ? savedSignalDistrictCells
+            : districtIndex == 1
+                ? savedPowerDistrictCells
+                : savedTransitDistrictCells;
+
+        if (!target.Contains(cell))
+        {
+            target.Add(cell);
+        }
+    }
+
     void InvalidateLookupCaches()
     {
         lookupCachesValid = false;
@@ -1032,6 +1206,9 @@ public class CityBlockoutGenerator : MonoBehaviour
         sideStreetCellLookup.Clear();
         alleyCellLookup.Clear();
         starterAreaCellLookup.Clear();
+        signalDistrictCellLookup.Clear();
+        powerDistrictCellLookup.Clear();
+        transitDistrictCellLookup.Clear();
     }
 
     void CarveDeadEnds()
@@ -1607,53 +1784,7 @@ public class CityBlockoutGenerator : MonoBehaviour
             for (int y = 1; y < height - 1; y++)
             {
                 Vector2Int cell = new Vector2Int(x, y);
-                float noise = Mathf.PerlinNoise((x + seed * 0.013f) * 0.16f, (y - seed * 0.017f) * 0.16f);
-                float edgeBreakup = Mathf.Lerp(-1.7f, 2.1f, noise);
-                bool inside = Vector2Int.Distance(cell, baseCell) <= centralSafeZoneRadius + edgeBreakup;
-
-                for (int i = 0; i < plan.sectors.Count; i++)
-                {
-                    StarterAreaSectorPlan sector = plan.sectors[i];
-
-                    if (Vector2Int.Distance(cell, sector.relayCell) <= sector.maskRadius + edgeBreakup)
-                    {
-                        inside = true;
-                    }
-
-                    for (int neighborhood = 0; neighborhood < sector.neighborhoodCells.Count; neighborhood++)
-                    {
-                        if (Vector2Int.Distance(cell, sector.neighborhoodCells[neighborhood]) <= Mathf.Max(6, sectorLoopRadius + 3) + edgeBreakup)
-                        {
-                            inside = true;
-                        }
-                    }
-
-                    for (int opportunity = 0; opportunity < sector.resourceOpportunityCells.Count; opportunity++)
-                    {
-                        if (Vector2Int.Distance(cell, sector.resourceOpportunityCells[opportunity]) <= Mathf.Max(5, sectorLoopRadius) + edgeBreakup)
-                        {
-                            inside = true;
-                        }
-                    }
-                }
-
-                for (int route = 0; route < plan.mainRoutes.Count; route++)
-                {
-                    StarterAreaRoutePlan routePlan = plan.mainRoutes[route];
-
-                    for (int point = 0; point < routePlan.points.Count - 1; point++)
-                    {
-                        if (DistanceToSegment(cell, routePlan.points[point], routePlan.points[point + 1]) <= sectorCorridorWidth + edgeBreakup)
-                        {
-                            inside = true;
-                        }
-                    }
-                }
-
-                if (DistanceToSegment(cell, GetTransitRelayCell(plan), plan.gateCell) <= sectorCorridorWidth + edgeBreakup)
-                {
-                    inside = true;
-                }
+                bool inside = IsTemplateUrbanDistrictCell(cell, plan, baseCell);
 
                 if (!inside)
                 {
@@ -1664,6 +1795,141 @@ public class CityBlockoutGenerator : MonoBehaviour
                 MarkStarterArea(cell);
             }
         }
+    }
+
+    bool IsTemplateUrbanDistrictCell(Vector2Int cell, StarterAreaLayoutPlan plan, Vector2Int baseCell)
+    {
+        if (IsInsideBlockyRect(cell, baseCell, centralSafeZoneRadius + 3, centralSafeZoneRadius, 0))
+        {
+            return true;
+        }
+
+        for (int i = 0; i < plan.sectors.Count; i++)
+        {
+            if (IsInsideTemplateSectorDistrict(cell, plan.sectors[i], i))
+            {
+                return true;
+            }
+        }
+
+        for (int route = 0; route < plan.mainRoutes.Count; route++)
+        {
+            StarterAreaRoutePlan routePlan = plan.mainRoutes[route];
+
+            for (int point = 0; point < routePlan.points.Count - 1; point++)
+            {
+                if (IsInsideBlockyRouteEnvelope(cell, routePlan.points[point], routePlan.points[point + 1], 4))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return IsInsideBlockyRouteEnvelope(cell, GetTransitRelayCell(plan), plan.gateCell, 3);
+    }
+
+    bool IsInsideTemplateSectorDistrict(Vector2Int cell, StarterAreaSectorPlan sector, int sectorIndex)
+    {
+        int primaryHalfWidth = Mathf.Max(12, sector.maskRadius - (sectorIndex == 0 ? 3 : 1));
+        int primaryHalfHeight = Mathf.Max(10, sector.maskRadius - (sectorIndex == 0 ? 8 : 6));
+
+        if (sectorIndex == 2)
+        {
+            primaryHalfWidth += 3;
+            primaryHalfHeight += 2;
+        }
+
+        if (IsInsideBlockyRect(cell, sector.relayCell, primaryHalfWidth, primaryHalfHeight, sectorIndex + 1))
+        {
+            return true;
+        }
+
+        for (int i = 0; i < sector.neighborhoodCells.Count; i++)
+        {
+            Vector2Int neighborhood = sector.neighborhoodCells[i];
+            int halfWidth = sectorIndex == 0 ? 8 : sectorIndex == 1 ? 10 : 11;
+            int halfHeight = sectorIndex == 0 ? 7 : sectorIndex == 1 ? 8 : 9;
+
+            if (IsInsideBlockyRect(cell, neighborhood, halfWidth, halfHeight, sectorIndex * 11 + i + 5))
+            {
+                return true;
+            }
+        }
+
+        for (int i = 0; i < sector.resourceOpportunityCells.Count; i++)
+        {
+            Vector2Int opportunity = sector.resourceOpportunityCells[i];
+            int halfWidth = sectorIndex == 0 ? 5 : 6;
+            int halfHeight = sectorIndex == 2 ? 6 : 5;
+
+            if (IsInsideBlockyRect(cell, opportunity, halfWidth, halfHeight, sectorIndex * 13 + i + 19))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    bool IsInsideBlockyRect(Vector2Int cell, Vector2Int center, int halfWidth, int halfHeight, int salt)
+    {
+        int edgeOffset = GetBlockyEdgeOffset(cell, salt);
+        int dx = Mathf.Abs(cell.x - center.x);
+        int dy = Mathf.Abs(cell.y - center.y);
+
+        if (dx > halfWidth + edgeOffset || dy > halfHeight + edgeOffset)
+        {
+            return false;
+        }
+
+        bool nearHorizontalEdge = dx >= halfWidth - 2;
+        bool nearVerticalEdge = dy >= halfHeight - 2;
+
+        if (nearHorizontalEdge || nearVerticalEdge)
+        {
+            float notchNoise = GetTemplateBlockNoise(cell, salt + 37);
+
+            if (notchNoise < 0.16f)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool IsInsideBlockyRouteEnvelope(Vector2Int cell, Vector2Int a, Vector2Int b, int halfWidth)
+    {
+        if (DistanceToSegment(cell, a, b) > halfWidth)
+        {
+            return false;
+        }
+
+        return GetTemplateBlockNoise(cell, halfWidth + 71) > 0.08f;
+    }
+
+    int GetBlockyEdgeOffset(Vector2Int cell, int salt)
+    {
+        float noise = GetTemplateBlockNoise(cell, salt);
+
+        if (noise < 0.22f)
+        {
+            return -3;
+        }
+
+        if (noise > 0.78f)
+        {
+            return 2;
+        }
+
+        return 0;
+    }
+
+    float GetTemplateBlockNoise(Vector2Int cell, int salt)
+    {
+        float blockX = Mathf.Floor((cell.x + salt * 17) / 4f);
+        float blockY = Mathf.Floor((cell.y - salt * 23) / 4f);
+        return Mathf.PerlinNoise((blockX + seed * 0.031f) * 0.31f, (blockY - seed * 0.027f) * 0.31f);
     }
 
     void BuildStarterAreaMask(Vector2Int baseCell)
@@ -1965,11 +2231,16 @@ public class CityBlockoutGenerator : MonoBehaviour
                     continue;
                 }
 
+                if (!IsResourceOpportunityPlacementValid(opportunity, sectorIndex))
+                {
+                    continue;
+                }
+
                 CarveResourceOpportunityPocket(opportunity, sectorIndex);
                 Vector2Int routeSeed = FindNearestRouteCell(opportunity, true);
-                CarveRouteBetweenCells(routeSeed, opportunity, sideStreetRadius, sideStreetCells, true, 0.28f);
+                CarveRouteBetweenCells(routeSeed, opportunity, sideStreetRadius, sideStreetCells, false, 0.18f);
 
-                if (sectorOpportunities.Count > 0 && Random.value < 0.48f + sectorIndex * 0.08f)
+                if (sectorOpportunities.Count > 0 && !ShouldUseTemplateGuidedLayout() && Random.value < 0.48f + sectorIndex * 0.08f)
                 {
                     Vector2Int previous = sectorOpportunities[sectorOpportunities.Count - 1];
                     CarveRouteBetweenCells(previous, opportunity, sideStreetRadius, sideStreetCells, false, 0.36f);
@@ -2018,16 +2289,21 @@ public class CityBlockoutGenerator : MonoBehaviour
                     continue;
                 }
 
+                if (!IsResourceOpportunityPlacementValid(opportunity, sectorIndex))
+                {
+                    continue;
+                }
+
                 CarveResourceOpportunityPocket(opportunity, sectorIndex);
                 CarveRouteBetweenCells(
                     FindNearestRouteCell(opportunity, true),
                     opportunity,
                     sideStreetRadius,
                     sideStreetCells,
-                    true,
-                    0.2f + sectorIndex * 0.04f);
+                    false,
+                    0.12f + sectorIndex * 0.03f);
 
-                if (i > 0)
+                if (i > 0 && !ShouldUseTemplateGuidedLayout())
                 {
                     CarveRouteBetweenCells(
                         previousOpportunity,
@@ -2130,28 +2406,49 @@ public class CityBlockoutGenerator : MonoBehaviour
 
     void CarveResourceOpportunityPocket(Vector2Int center, int sectorIndex)
     {
-        int radius = sectorIndex == 0 ? 1 : 2;
+        Vector2Int routeSeed = FindNearestRouteCell(center, true);
+        Vector2Int approach = GetDominantCardinalDirection(center - routeSeed);
 
-        for (int x = -radius; x <= radius; x++)
+        if (approach == Vector2Int.zero)
         {
-            for (int y = -radius; y <= radius; y++)
+            approach = GetDominantCardinalDirection(center - GetBaseCell());
+        }
+
+        Vector2Int lateral = new Vector2Int(-approach.y, approach.x);
+        List<Vector2Int> pocketCells = new List<Vector2Int>
+        {
+            center
+        };
+
+        if (sectorIndex > 0 || Random.value < 0.35f)
+        {
+            pocketCells.Add(center + lateral);
+        }
+
+        if (sectorIndex > 1)
+        {
+            pocketCells.Add(center + approach);
+        }
+
+        for (int i = 0; i < pocketCells.Count; i++)
+        {
+            Vector2Int cell = pocketCells[i];
+
+            if (!IsInsideBounds(cell) || !IsCellInsideStarterArea(cell.x, cell.y))
             {
-                Vector2Int cell = center + new Vector2Int(x, y);
-
-                if (!IsInsideBounds(cell) || !IsCellInsideStarterArea(cell.x, cell.y))
-                {
-                    continue;
-                }
-
-                MarkWalkable(cell);
-
-                if (!sideStreetCells.Contains(cell))
-                {
-                    sideStreetCells.Add(cell);
-                }
-
-                SaveCellCategory(cell, sideStreetCells);
+                continue;
             }
+
+            MarkWalkable(cell);
+
+            List<Vector2Int> category = i == 0 ? sideStreetCells : alleyCells;
+
+            if (!category.Contains(cell))
+            {
+                category.Add(cell);
+            }
+
+            SaveCellCategory(cell, category);
         }
 
         if (!savedResourceOpportunityCells.Contains(center))
@@ -2163,7 +2460,7 @@ public class CityBlockoutGenerator : MonoBehaviour
     void CarveResourceOpportunityAlleys(Vector2Int center, int sectorIndex)
     {
         int branchCount = sectorIndex == 0 ? 1 : sectorIndex == 1 ? 2 : 3;
-        int maxLength = sectorIndex == 0 ? 4 : sectorIndex == 1 ? 5 : 6;
+        int maxLength = sectorIndex == 0 ? 3 : sectorIndex == 1 ? 4 : 5;
 
         for (int i = 0; i < branchCount; i++)
         {
@@ -2177,7 +2474,7 @@ public class CityBlockoutGenerator : MonoBehaviour
                 true
             );
 
-            if (sectorIndex > 0 && Random.value < 0.28f)
+            if (sectorIndex > 1 && Random.value < 0.18f)
             {
                 CarveMazeLikePath(
                     end,
@@ -2190,6 +2487,28 @@ public class CityBlockoutGenerator : MonoBehaviour
                 );
             }
         }
+    }
+
+    bool IsResourceOpportunityPlacementValid(Vector2Int center, int sectorIndex)
+    {
+        if (!IsInsideBounds(center) || !IsCellInsideStarterArea(center.x, center.y))
+        {
+            return false;
+        }
+
+        float minimumSpacing = sectorIndex == 0 ? 8f : sectorIndex == 1 ? 9f : 10f;
+
+        if (!IsFarEnoughFromCells(center, savedResourceOpportunityCells, minimumSpacing))
+        {
+            return false;
+        }
+
+        if (IsCellPlaza(center.x, center.y) || CountWalkableCellsInEnvelope(center, 2) > 12)
+        {
+            return false;
+        }
+
+        return true;
     }
 
     Vector2Int FindNearestRouteCell(Vector2Int cell, bool includeMainStreet)
