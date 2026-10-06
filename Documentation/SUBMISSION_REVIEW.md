@@ -12,7 +12,7 @@ The short review path is README -> its six source entry points -> Architecture. 
 
 - The development branch contains the generated city and relay progression missing from the current `main` gameplay tree. It is the stronger source-review candidate.
 - Before this pass, `main` and development had separate documentation commits based on the same older ancestor. An initial merge-tree simulation was clean.
-- This pass updates documents that were independently added on both branches. Promotion can therefore produce add/add conflicts in README and five documentation files. Resolve those specific paths using the reviewed development versions; do not blindly select one side for all files.
+- The final merge-tree simulation reports seven add/add conflicts: README, five documentation files, and the documentation-check script. Resolve those specific paths using the reviewed development versions; do not blindly select one side for all files. No gameplay-source conflicts were reported for the reviewed branch pair.
 - The workspace still contains earlier uncommitted gameplay/scene changes and four new gameplay scripts with their metadata. They are excluded from this presentation commit and were not certified as a submission version. Avoid `git add .` or switching this dirty checkout to `main`.
 - The committed gameplay source can be inspected and compiled separately from those experiments. Compilation is not evidence of a clean Unity import, a complete run, a standalone build, or performance.
 
@@ -31,7 +31,7 @@ git -C ../Failstate-submission merge --no-ff --no-commit origin/codex/failstate-
 Expect the documented add/add conflicts. For this reviewed branch pair, take the development copy of only these documents:
 
 ```powershell
-git -C ../Failstate-submission restore --source=origin/codex/failstate-cleanup-layout --staged --worktree -- README.md Documentation/ARCHITECTURE.md Documentation/ATTRIBUTION.md Documentation/DEVELOPMENT.md Documentation/PLAYTESTING.md Documentation/STATUS.md
+git -C ../Failstate-submission restore --source=origin/codex/failstate-cleanup-layout --staged --worktree -- README.md Documentation/ARCHITECTURE.md Documentation/ATTRIBUTION.md Documentation/DEVELOPMENT.md Documentation/PLAYTESTING.md Documentation/STATUS.md Tools/Test-Documentation.ps1
 git -C ../Failstate-submission diff --name-only --diff-filter=U
 git -C ../Failstate-submission diff --cached --stat
 ```
