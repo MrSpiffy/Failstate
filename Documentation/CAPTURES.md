@@ -2,7 +2,7 @@
 
 No project gameplay screenshots or GIFs are currently tracked. The images under TextMesh Pro are vendor examples, not Failstate captures. The README contains an HTML comment marking the intended visual location; it deliberately renders no empty image boxes.
 
-Capture the committed version you plan to submit. The current working scene contains unpublished experiments, so use a separate checkout of the committed development branch when preparing evidence for that branch. Do not present concept art as implemented gameplay.
+Capture the committed version you plan to submit. The current working scene contains unpublished experiments, so use a clean clone of `main` when preparing submission evidence. Do not present concept art as implemented gameplay.
 
 ## Recommended Captures
 

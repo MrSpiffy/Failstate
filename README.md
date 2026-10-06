@@ -22,32 +22,31 @@ Use images from the submitted committed version and label debug views. No concep
 
 ## Where to Start
 
-These six entry points link to the published starter-area branch. Each leads to related components; the [architecture guide](Documentation/ARCHITECTURE.md) explains their data and control flow.
+These six entry points introduce the implemented starter-area systems. Each leads to related components; the [architecture guide](Documentation/ARCHITECTURE.md) explains their data and control flow.
 
 | Entry Point | What to Inspect |
 | --- | --- |
-| [CityBlockoutGenerator.cs](https://github.com/MrSpiffy/Failstate/blob/codex/failstate-cleanup-layout/Assets/Scripts/CityBlockoutGenerator.cs) | `GenerateCityBlockout`, saved cell classifications, and connectivity repair show how a generated layout becomes a gameplay contract. |
-| [GeneratedWorldSpawner.cs](https://github.com/MrSpiffy/Failstate/blob/codex/failstate-cleanup-layout/Assets/Scripts/GeneratedWorldSpawner.cs) | `GenerateSpawnedObjects` shows constrained placement and ordered setup of starter supplies, infrastructure, hazards, and restoration feedback. |
-| [InfrastructureNetworkManager.cs](https://github.com/MrSpiffy/Failstate/blob/codex/failstate-cleanup-layout/Assets/Scripts/InfrastructureNetworkManager.cs) | `CanRestoreNode` and `GetNextRequiredNodeType` show network prerequisites; follow `RelayRestorationController` for per-relay repair steps. |
-| [PlayerCondition.cs](https://github.com/MrSpiffy/Failstate/blob/codex/failstate-cleanup-layout/Assets/Scripts/PlayerCondition.cs) | Integrity updates and movement/perception queries connect survival state to other gameplay components. |
-| [PlayerInventory.cs](https://github.com/MrSpiffy/Failstate/blob/codex/failstate-cleanup-layout/Assets/Scripts/PlayerInventory.cs) | Cost checks, spending, and `OnInventoryChanged` connect shared item state to crafting, repair, and UI refresh. |
-| [DevConsoleCommandSystem.cs](https://github.com/MrSpiffy/Failstate/blob/codex/failstate-cleanup-layout/Assets/Scripts/DevConsoleCommandSystem.cs) | Command parsing and targeted state controls support reproduction and inspection of gameplay problems. |
+| [CityBlockoutGenerator.cs](Assets/Scripts/CityBlockoutGenerator.cs) | `GenerateCityBlockout`, saved cell classifications, and connectivity repair show how a generated layout becomes a gameplay contract. |
+| [GeneratedWorldSpawner.cs](Assets/Scripts/GeneratedWorldSpawner.cs) | `GenerateSpawnedObjects` shows constrained placement and ordered setup of starter supplies, infrastructure, hazards, and restoration feedback. |
+| [InfrastructureNetworkManager.cs](Assets/Scripts/InfrastructureNetworkManager.cs) | `CanRestoreNode` and `GetNextRequiredNodeType` show network prerequisites; follow `RelayRestorationController` for per-relay repair steps. |
+| [PlayerCondition.cs](Assets/Scripts/PlayerCondition.cs) | Integrity updates and movement/perception queries connect survival state to other gameplay components. |
+| [PlayerInventory.cs](Assets/Scripts/PlayerInventory.cs) | Cost checks, spending, and `OnInventoryChanged` connect shared item state to crafting, repair, and UI refresh. |
+| [DevConsoleCommandSystem.cs](Assets/Scripts/DevConsoleCommandSystem.cs) | Command parsing and targeted state controls support reproduction and inspection of gameplay problems. |
 
-## Current Scope
+## Project Status
 
-The playable source prototype includes the workshop, generated lower-city streets and relay plazas, an overhead-city blockout, scavenging/crafting, environmental hazards, map/scanning, data traces, and Base Camp -> Signal -> Power -> Transit progression.
+This repository contains the current starter-area prototype: the workshop, generated lower-city streets and relay plazas, an overhead-city blockout, scavenging/crafting, environmental hazards, map/scanning, data traces, and Base Camp -> Signal -> Power -> Transit progression.
 
-Art and environmental presentation are blockout quality. There is no published player release, disk-save system, or finished second sector. Further scan, field-assembly, salvage-renewal, and service-corridor experiments remain local and are not included in the published gameplay snapshot. [Status and limitations](Documentation/STATUS.md) records that distinction and open playtest issues.
+Failstate is an active work in progress, with blockout art and environmental presentation. There is no published player release, disk-save system, or finished second sector. [Status and limitations](Documentation/STATUS.md) documents the implemented scope, ongoing experiments, and open playtest issues.
 
 ## Run from Source
 
-For the committed starter-area snapshot described here, clone the development branch explicitly. [Status](Documentation/STATUS.md) records publication and branch details.
 
 ```sh
-git clone --branch codex/failstate-cleanup-layout https://github.com/MrSpiffy/Failstate.git
+git clone https://github.com/MrSpiffy/Failstate.git
 ```
 
-Open the folder in Unity Hub with **Unity 6000.3.12f1**, allow package restore/compilation, then open `Assets/Scenes/MainScene.unity` and press Play. Git and network access are needed for the initial package restore. `MainScene` is included in this branch's build scene list. See [Development](Documentation/DEVELOPMENT.md) for build support, regeneration tools, and console commands.
+Open the folder in Unity Hub with **Unity 6000.3.12f1**, allow package restore/compilation, then open `Assets/Scenes/MainScene.unity` and press Play. Git and network access are needed for the initial package restore. `MainScene` is included in the build scene list. See [Development](Documentation/DEVELOPMENT.md) for build support, regeneration tools, and console commands.
 
 **Controls:** WASD/arrows + mouse to move/look, Space to jump, E to interact/use, Tab for inventory, M for map, Q to scan, Escape to pause/close an interface. Map: wheel/arrows to zoom and left-drag to pan. `/` opens the developer console; R restarts after Core failure.
 

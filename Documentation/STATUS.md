@@ -2,20 +2,13 @@
 
 Repository review: **October 6, 2026**. This page distinguishes published source from the newer local workspace. It is a snapshot, not a release announcement or test certificate.
 
-## Availability
+## Current Prototype
 
-The table records the branch situation at review time, before the proposed promotion in [Submission Review](SUBMISSION_REVIEW.md). The README and setup guide target the committed starter-area snapshot.
-
-| Location | What is available |
-| --- | --- |
-| `main` | Earlier survival/inventory/crafting foundation, plus the repository presentation and documentation |
-| [`codex/failstate-cleanup-layout`](https://github.com/MrSpiffy/Failstate/tree/codex/failstate-cleanup-layout) | Published starter-city and relay-progression prototype; gameplay snapshot `1e4ee61` |
-| Local development workspace | Additional uncommitted relay-reward, resource-economy, field-assembly, scan, and service-corridor experiments |
-| Releases | No published playable build at the time of this review |
+The default branch contains the reviewed starter-city and relay-progression prototype. A normal repository clone includes the implemented systems described below. No playable build has been published yet.
 
 ## Published Starter-Area Prototype
 
-The development branch includes template-guided city generation, workshop systems, survival decay, inventory/crafting, hazards, maps/scanning, a Base Camp root and three-relay chain, relay landmarks, data traces, a memory milestone, and an overhead city blockout.
+The published prototype includes template-guided city generation, workshop systems, survival decay, inventory/crafting, hazards, maps/scanning, a Base Camp root and three-relay chain, relay landmarks, data traces, a memory milestone, and an overhead city blockout.
 
 This supports a starter-area gameplay loop. It does not establish a finished campaign, reliable balance across every generated layout, a seamless endless city, or a completed destination beyond the deep-city gate.
 
@@ -39,7 +32,7 @@ Human playtests reported that field assembly and renewable salvage reduced frict
 - **Economy:** salvage-drop frequency and conversion costs need continued tuning against normal exploration and relay requirements.
 - **Navigation:** scan readability, marker overlap, and the relationship between exploration reveal and restoration feedback need further testing.
 - **World presentation:** prototype geometry, the visible city boundary, and limited distant-city treatment do not yet deliver the intended sense of scale.
-- **Build setup:** the development branch now includes `MainScene` in the shared build scene list and uses the `Failstate` product name. Custom profiles and actual player-build/restart behavior still need verification.
+- **Build setup:** the project includes `MainScene` in the shared build scene list and uses the `Failstate` product name. Custom profiles and actual player-build/restart behavior still need verification.
 - **Persistence and verification:** no disk-save system, project-specific automated gameplay suite, current standalone release, or measured performance targets are established here.
 
 ## Intended Direction
