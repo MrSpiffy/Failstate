@@ -1,3 +1,4 @@
+# Unity-generated folders and local recovery files
 [Ll]ibrary/
 [Tt]emp/
 [Oo]bj/
@@ -9,9 +10,12 @@ Assets/_Recovery/
 Assets/_Recovery.meta
 ProjectSettings/McpUnitySettings.json
 
+# IDE-generated projects and solutions
+.vs/
 *.csproj
 *.unityproj
 *.sln
+*.slnx
 *.suo
 *.tmp
 *.user
@@ -20,5 +24,14 @@ ProjectSettings/McpUnitySettings.json
 *.booproj
 *.svd
 
+# Local development notes, logs, and credentials
+/FAILSTATE*HANDOFF*.md
+/*.log
+/.env
+/.env.*
+!/.env.example
+/.credentials/
+
+# Operating-system files
 .DS_Store
 Thumbs.db
