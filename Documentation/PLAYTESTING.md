@@ -13,7 +13,7 @@ Start a fresh session without resource grants, creative mode, or map reveal.
 - [ ] Return to the workshop and reach the starter-chain memory milestone.
 - [ ] Inspect the deep-city gate/signal without treating it as a completed next sector.
 - [ ] Open/close inventory, map, workbench, pause, and console; check cursor and movement recover correctly.
-- [ ] Test failure/restart after adding `MainScene` to the build profile's scene list.
+- [ ] Verify `MainScene` is enabled in the active build profile and test failure/restart.
 
 ## Feel and Motivation
 

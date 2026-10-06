@@ -13,6 +13,16 @@ public class PauseMenuUI : MonoBehaviour
 
     public InteractionPromptUI interactionPromptUI;
 
+    void Awake()
+    {
+        IsPauseMenuOpen = false;
+
+        if (pauseMenuPanel != null)
+        {
+            pauseMenuPanel.SetActive(false);
+        }
+    }
+
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.Escape))
@@ -51,6 +61,16 @@ public class PauseMenuUI : MonoBehaviour
         if (IsPauseMenuOpen)
         {
             ClosePauseMenu();
+            return;
+        }
+
+        if (MinimapUI.IsLargeMapOpen)
+        {
+            if (refs != null && refs.minimapUI != null)
+            {
+                refs.minimapUI.CloseLargeMap();
+            }
+
             return;
         }
 

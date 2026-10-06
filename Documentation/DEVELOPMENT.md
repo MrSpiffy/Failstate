@@ -1,15 +1,15 @@
 # Development
 
-## Choose the Correct Branch
+## Clone the Project
 
-`main` contains the earlier survival foundation and repository documentation. The published city and relay prototype is on `codex/failstate-cleanup-layout`:
+The default branch contains the current submission prototype:
 
 ```sh
-git clone --branch codex/failstate-cleanup-layout https://github.com/MrSpiffy/Failstate.git
+git clone https://github.com/MrSpiffy/Failstate.git
 cd Failstate
 ```
 
-Preserve local work before switching branches in an existing checkout. [Status](STATUS.md) documents which later features have not been published yet.
+[Status](STATUS.md) documents the implemented scope and experiments not included in the published prototype.
 
 ## Editor Setup
 
@@ -24,13 +24,13 @@ The MCP Unity package supports AI/editor tooling; it is not a gameplay feature a
 
 ## Builds and Scene Reloads
 
-The checked-in `EditorBuildSettings.asset` has an empty scene list. In **File > Build Profiles**, add `Assets/Scenes/MainScene.unity` to the active profile's scene list before making a player build or testing the failure/restart flow. Restart code reloads the active scene by build index.
+The project includes `Assets/Scenes/MainScene.unity` as an enabled build scene. In **File > Build Profiles**, verify it remains in the active profile's scene list before building, particularly if a custom profile overrides the shared list. Restart code reloads the active scene by build index. Unity's product name is `Failstate`; the historical `LastMaintenance` label has been replaced without changing gameplay logic.
 
 Install the appropriate platform build-support module through Unity Hub. No downloadable player release or licensed Unity CI build is currently configured. This repository cleanup does not establish standalone build support or measured hardware requirements.
 
 ## Scene Generation Tools
 
-The published development branch provides these menus:
+The project provides these menus:
 
 - **Tools > Failstate > Clean Main Scene Layout**
 - **Tools > Failstate > Regenerate City Blockout**

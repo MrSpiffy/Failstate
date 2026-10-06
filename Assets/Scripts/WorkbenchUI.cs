@@ -27,6 +27,13 @@ public class WorkbenchUI : MonoBehaviour
 
     void Awake()
     {
+        IsWorkbenchOpen = false;
+
+        if (workbenchPanel != null)
+        {
+            workbenchPanel.SetActive(false);
+        }
+
         BuildRecipeList();
     }
 
@@ -105,6 +112,16 @@ public class WorkbenchUI : MonoBehaviour
         }
     }
 
+    public void ForceCloseWorkbench()
+    {
+        IsWorkbenchOpen = false;
+
+        if (workbenchPanel != null)
+        {
+            workbenchPanel.SetActive(false);
+        }
+    }
+
     void UpdateRecipeDisplay()
     {
         if (recipeText == null || playerInventory == null) return;
@@ -160,7 +177,9 @@ public class WorkbenchUI : MonoBehaviour
                 "Press 1-9 to craft a visible recipe.\n" +
                 "Resources — Metal: " + playerInventory.GetItemCount(ItemType.MetalScrap) +
                 " | Wiring: " + playerInventory.GetItemCount(ItemType.Wiring) +
-                " | Core Fragments: " + playerInventory.GetItemCount(ItemType.CoreFragment);
+                " | Core Fragments: " + playerInventory.GetItemCount(ItemType.CoreFragment) +
+                " | Circuits: " + playerInventory.GetItemCount(ItemType.CircuitScrap) +
+                " | Cells: " + playerInventory.GetItemCount(ItemType.EnergyCell);
         }
 
         StartCoroutine(ScrollRecipesToTopNextFrame());
@@ -208,8 +227,33 @@ public class WorkbenchUI : MonoBehaviour
         {
             playerInventory.AddItem(recipe.outputItem, recipe.outputAmount);
             Debug.Log("Crafted " + recipe.outputAmount + " " + ItemDatabase.GetDisplayName(recipe.outputItem));
+
+            if (IsRelayCraftingItem(recipe.outputItem))
+            {
+                FirstRunObjectiveManager objectiveManager = FindFirstObjectByType<FirstRunObjectiveManager>();
+
+                if (objectiveManager != null && recipe.outputItem == ItemType.StabilizerModule)
+                {
+                    objectiveManager.NotifyStabilizerModuleCrafted();
+                }
+
+                if (SystemMessageUI.Instance != null)
+                {
+                    SystemMessageUI.Instance.ShowMessage(
+                        ItemDatabase.GetDisplayName(recipe.outputItem).ToUpperInvariant() + " ASSEMBLED\nReturn to the active relay and install the component.",
+                        4.5f
+                    );
+                }
+            }
         }
 
         UpdateRecipeDisplay();
+    }
+
+    bool IsRelayCraftingItem(ItemType itemType)
+    {
+        return itemType == ItemType.StabilizerModule ||
+               itemType == ItemType.PowerCoupler ||
+               itemType == ItemType.TransitControlModule;
     }
 }

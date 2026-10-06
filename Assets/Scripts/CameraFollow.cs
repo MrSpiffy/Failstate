@@ -15,9 +15,23 @@ public class CameraFollow : MonoBehaviour
     private bool canLook = true;
     private PlayerCondition playerCondition;
 
+    [Header("Camera Collision")]
+    public LayerMask collisionLayers;
+    public float cameraCollisionRadius = 0.3f;
+    public float cameraCollisionPadding = 0.2f;
+
+    public float minCameraDistance = 2.25f;
+    public float maxCameraPitch = 70f;
+    public float focusHeight = 1.5f;
+    public float collisionReturnSpeed = 12f;
+
+    private PlayerMovement playerMovement;
+    private float currentCameraDistance = -1f;
+
     void Start()
     {
         playerCondition = target != null ? target.GetComponent<PlayerCondition>() : null;
+        playerMovement = target != null ? target.GetComponent<PlayerMovement>() : null;
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
@@ -35,20 +49,69 @@ public class CameraFollow : MonoBehaviour
             {
                 float mouseY = rawMouseY * mouseSensitivity * Time.deltaTime;
                 xRotation -= mouseY;
-                xRotation = Mathf.Clamp(xRotation, -60f, 60f);
+                xRotation = Mathf.Clamp(xRotation, -maxCameraPitch, maxCameraPitch);
             }
         }
 
-        Quaternion baseRotation = Quaternion.Euler(xRotation, target.eulerAngles.y, 0f);
+        float yaw = playerMovement != null ? playerMovement.GetViewYaw() : target.eulerAngles.y;
+        Quaternion baseRotation = Quaternion.Euler(xRotation, yaw, 0f);
         Vector3 rotatedOffset = baseRotation * offset;
 
-        Vector3 finalPosition = target.position + rotatedOffset;
-        Quaternion finalRotation = Quaternion.LookRotation((target.position + Vector3.up * 1.5f) - finalPosition);
+        Vector3 focusPoint = target.position + Vector3.up * focusHeight;
+        Vector3 desiredPosition = target.position + rotatedOffset;
+        Vector3 directionToCamera = desiredPosition - focusPoint;
+        float desiredDistance = directionToCamera.magnitude;
+        float unobstructedDistance = desiredDistance;
+
+        if (Physics.SphereCast(
+            focusPoint,
+            cameraCollisionRadius,
+            directionToCamera.normalized,
+            out RaycastHit hit,
+            desiredDistance,
+            collisionLayers,
+            QueryTriggerInteraction.Ignore))
+        {
+            unobstructedDistance = Mathf.Max(minCameraDistance, hit.distance - cameraCollisionPadding);
+        }
+
+        if (currentCameraDistance < 0f)
+        {
+            currentCameraDistance = unobstructedDistance;
+        }
+        else if (unobstructedDistance < currentCameraDistance)
+        {
+            currentCameraDistance = unobstructedDistance;
+        }
+        else
+        {
+            currentCameraDistance = Mathf.MoveTowards(
+                currentCameraDistance,
+                unobstructedDistance,
+                collisionReturnSpeed * Time.deltaTime
+            );
+        }
+
+        Vector3 finalPosition = focusPoint + directionToCamera.normalized * currentCameraDistance;
+        Vector3 lookDirection = focusPoint - finalPosition;
+        Quaternion finalRotation;
+
+        if (lookDirection.sqrMagnitude > 0.001f)
+        {
+            finalRotation = Quaternion.LookRotation(lookDirection.normalized, Vector3.up);
+
+            Vector3 euler = finalRotation.eulerAngles;
+            euler.z = 0f;
+            finalRotation = Quaternion.Euler(euler);
+        }
+        else
+        {
+            finalRotation = baseRotation;
+        }
 
         ApplyPerceptionWobble(ref finalPosition, ref finalRotation);
 
-        transform.position = finalPosition;
-        transform.rotation = finalRotation;
+        transform.SetPositionAndRotation(finalPosition, finalRotation);
     }
 
     void ApplyPerceptionWobble(ref Vector3 position, ref Quaternion rotation)

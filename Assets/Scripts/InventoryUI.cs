@@ -24,6 +24,16 @@ public class InventoryUI : MonoBehaviour
     private ItemType? selectedItemType = null;
     private string lastFeedbackMessage = "";
 
+    void Awake()
+    {
+        IsInventoryOpen = false;
+
+        if (inventoryPanel != null)
+        {
+            inventoryPanel.SetActive(false);
+        }
+    }
+
     void OnEnable()
     {
         if (playerInventory != null)
@@ -112,6 +122,16 @@ public class InventoryUI : MonoBehaviour
         if (uiStateManager != null)
         {
             uiStateManager.ReturnToGameplay();
+        }
+    }
+
+    public void ForceCloseInventory()
+    {
+        IsInventoryOpen = false;
+
+        if (inventoryPanel != null)
+        {
+            inventoryPanel.SetActive(false);
         }
     }
 
