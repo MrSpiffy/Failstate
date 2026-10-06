@@ -2,7 +2,7 @@
 
 ## Choose the Correct Branch
 
-`main` contains the earlier survival foundation and repository documentation. The published city and relay prototype is on `codex/failstate-cleanup-layout`:
+This guide targets the committed city and relay prototype on `codex/failstate-cleanup-layout`. Use an explicit branch clone to reproduce that snapshot:
 
 ```sh
 git clone --branch codex/failstate-cleanup-layout https://github.com/MrSpiffy/Failstate.git
@@ -24,7 +24,7 @@ The MCP Unity package supports AI/editor tooling; it is not a gameplay feature a
 
 ## Builds and Scene Reloads
 
-The checked-in `EditorBuildSettings.asset` has an empty scene list. In **File > Build Profiles**, add `Assets/Scenes/MainScene.unity` to the active profile's scene list before making a player build or testing the failure/restart flow. Restart code reloads the active scene by build index.
+The development branch includes `Assets/Scenes/MainScene.unity` as an enabled build scene. In **File > Build Profiles**, verify it remains in the active profile's scene list before building, particularly if a custom profile overrides the shared list. Restart code reloads the active scene by build index. Unity's product name is `Failstate`; the historical `LastMaintenance` label has been replaced without changing gameplay logic.
 
 Install the appropriate platform build-support module through Unity Hub. No downloadable player release or licensed Unity CI build is currently configured. This repository cleanup does not establish standalone build support or measured hardware requirements.
 

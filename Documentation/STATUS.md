@@ -4,6 +4,8 @@ Repository review: **October 6, 2026**. This page distinguishes published source
 
 ## Availability
 
+The table records the branch situation at review time, before the proposed promotion in [Submission Review](SUBMISSION_REVIEW.md). The README and setup guide target the committed starter-area snapshot.
+
 | Location | What is available |
 | --- | --- |
 | `main` | Earlier survival/inventory/crafting foundation, plus the repository presentation and documentation |
@@ -37,7 +39,7 @@ Human playtests reported that field assembly and renewable salvage reduced frict
 - **Economy:** salvage-drop frequency and conversion costs need continued tuning against normal exploration and relay requirements.
 - **Navigation:** scan readability, marker overlap, and the relationship between exploration reveal and restoration feedback need further testing.
 - **World presentation:** prototype geometry, the visible city boundary, and limited distant-city treatment do not yet deliver the intended sense of scale.
-- **Build setup:** no scene is included in the checked-in build profile. Add `MainScene` before player-build or restart testing.
+- **Build setup:** the development branch now includes `MainScene` in the shared build scene list and uses the `Failstate` product name. Custom profiles and actual player-build/restart behavior still need verification.
 - **Persistence and verification:** no disk-save system, project-specific automated gameplay suite, current standalone release, or measured performance targets are established here.
 
 ## Intended Direction
@@ -55,4 +57,4 @@ Isolated vantage points, visible restored/unrestored city contrast, a distant sk
 
 ## Evidence Boundaries
 
-Earlier development handoffs recorded successful C# and Unity compilation at those points in time. They are not fresh verification of the latest dirty workspace. This repository presentation pass checks documentation and Git hygiene; it makes no new claim of a complete gameplay playthrough, player build, or performance profile.
+Earlier development handoffs recorded successful C# and Unity compilation at those points in time. They are not fresh verification of the latest dirty workspace. This presentation pass compiled isolated committed runtime/editor source against installed Unity assemblies and checked documentation/Git hygiene; details and limits are in [Submission Review](SUBMISSION_REVIEW.md). It makes no new claim of a complete gameplay playthrough, clean Unity import, player build, or performance profile.

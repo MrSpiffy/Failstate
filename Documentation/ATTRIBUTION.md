@@ -2,9 +2,11 @@
 
 ## Development
 
-Failstate is developed through iterative design direction, implementation, and playtesting with **ChatGPT/Codex assistance**. AI assistance has contributed to code, technical discussion, and documentation. This repository should not be presented as wholly handwritten implementation.
+The developer directs the game's design, system requirements, and playtest-driven iteration. Recorded playtest feedback has shaped mobility/resource balance, relay benefits, workshop versus field crafting, and the intended service-route behavior. Those are concrete areas of design direction and evaluation, not a claim that every implementation was manually authored.
 
-Portfolio review can inspect the implemented systems, source history, design decisions, known issues, and the difference between intended behavior and verified results. This documentation does not assign a percentage of human versus generated code or claim work history not established by the project.
+**ChatGPT/Codex assistance** has contributed to code, technical discussion, debugging, and documentation. Generated implementation has been integrated and revised as the prototype evolves. The project should not be presented as wholly handwritten implementation, and repository history alone does not establish who typed each line or which architectural details were personally invented.
+
+Portfolio review can inspect the implemented systems, source history, design decisions, known issues, and the difference between intended behavior and verified results. The developer should be prepared to explain the code path from generation through placement and restoration, discuss the documented tradeoffs, and distinguish personal decisions from assisted implementation. This documentation does not assign a percentage of human versus generated code or claim work history not established by the project.
 
 ## Project Content
 

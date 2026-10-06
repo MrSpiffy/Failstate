@@ -11,7 +11,9 @@ $required = @(
     'Documentation/DEVELOPMENT.md',
     'Documentation/STATUS.md',
     'Documentation/PLAYTESTING.md',
-    'Documentation/ATTRIBUTION.md'
+    'Documentation/ATTRIBUTION.md',
+    'Documentation/CAPTURES.md',
+    'Documentation/SUBMISSION_REVIEW.md'
 )
 $failures = [System.Collections.Generic.List[string]]::new()
 $checkedLinks = 0
@@ -38,6 +40,8 @@ foreach ($folder in @('Documentation', '.github')) {
 $linkPattern = '\]\((?<target><[^>]+>|[^\s)]+)(?:\s+"[^"]*")?\)'
 foreach ($document in $documents) {
     $content = Get-Content -LiteralPath $document.FullName -Raw
+    $content = [regex]::Replace($content, '(?ms)^ {0,3}(?<fence>`{3,}|~{3,})[^\r\n]*\r?\n.*?^ {0,3}\k<fence>[ \t]*(?:\r?\n|$)', '')
+    $content = [regex]::Replace($content, '(?s)<!--.*?-->', '')
     foreach ($match in [regex]::Matches($content, $linkPattern)) {
         $target = $match.Groups['target'].Value.Trim('<', '>')
         if ($target -match '^(?:[a-zA-Z][a-zA-Z0-9+.-]*:|#)') {
