@@ -1,0 +1,31 @@
+name: Playtest feedback
+description: Record exploration, survival, progression, or traversal feedback.
+title: "[Playtest] "
+labels: []
+body:
+  - type: input
+    id: checkout
+    attributes:
+      label: Checkout and session
+      description: Branch/commit, local changes, generation settings/seed, and whether debug commands were used.
+    validations:
+      required: true
+  - type: textarea
+    id: progress
+    attributes:
+      label: How far did you get?
+      description: Relay milestones reached, approximate session length, and where you stopped.
+    validations:
+      required: true
+  - type: textarea
+    id: observations
+    attributes:
+      label: Specific moments and observations
+      description: What was interesting, rewarding, confusing, repetitive, or frustrating? Include locations and resource/travel details.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Supporting evidence
+      description: Screenshots, route timings, shortages, system integrity, or repeat attempts.
