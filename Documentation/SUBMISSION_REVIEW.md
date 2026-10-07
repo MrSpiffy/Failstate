@@ -4,7 +4,7 @@ Reviewed October 6, 2026 for a software-engineering internship portfolio. This i
 
 ## Recommendation
 
-**READY AFTER adding two real captures and doing a clean-checkout smoke test.** A finished game is not required to show the current engineering work. The uncommitted gameplay experiments do not need to be included in this submission snapshot.
+**READY AFTER adding three real captures and doing a clean-checkout smoke test while capturing.** A finished game is not required to show the current engineering work. The uncommitted gameplay experiments do not need to be included in this submission snapshot.
 
 The short review path is README -> its six source entry points -> Architecture. The first screen identifies the game, engine/language, WIP state, and shared-spatial-data engineering focus. AI assistance is disclosed in Authorship and Attribution rather than the opening project summary.
 

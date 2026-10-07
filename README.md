@@ -6,10 +6,8 @@ A 3D third-person survival/exploration game about a deteriorating maintenance ro
 
 The starter-area prototype combines a generated city, resource scavenging, three failing robot systems, and a staged relay-restoration chain. Its main engineering focus is connecting procedural spatial data to gameplay: the city layout informs resource placement, navigation, hazards, and infrastructure progression.
 
-<!-- Gameplay captures: insert real images here after following Documentation/CAPTURES.md.
-Suggested lead image: Documentation/Images/generated-city.png
-Suggested second image: Documentation/Images/infrastructure-map.png
-Use images from the submitted committed version and label debug views. No concept art substitutes.
+<!-- Capture 1: insert Documentation/Images/generated-city.png here once it exists.
+Wide view of the actual generated city blockout. See Documentation/CAPTURES.md.
 -->
 
 ## Engineering Highlights
@@ -19,6 +17,10 @@ Use images from the submitted committed version and label debug views. No concep
 - **Staged infrastructure progression.** Network prerequisites, relay diagnosis, component installation, and activation are represented separately. Restoration updates network state and feeds objectives, map reveal, environmental feedback, and the starter-chain memory milestone.
 - **Interconnected survival and interaction.** Core, Mobility, and Perception affect failure, movement, and camera behavior. Inventory cost checks support crafting and repair; owner/priority-based prompts resolve competing nearby interactions.
 - **Tools for iteration.** Scene regeneration, opening-pacing checks, and console commands make layout, economy, and progression easier to inspect. These are development tools, not a claim of comprehensive automated test coverage.
+
+<!-- Capture 3: insert Documentation/Images/infrastructure-map.png here once it exists.
+Map showing city layout and relay/restoration state. Label developer views accurately.
+-->
 
 ## Where to Start
 
@@ -39,8 +41,11 @@ This repository contains the current starter-area prototype: the workshop, gener
 
 Failstate is an active work in progress, with blockout art and environmental presentation. There is no published player release, disk-save system, or finished second sector. [Status and limitations](Documentation/STATUS.md) documents the implemented scope, ongoing experiments, and open playtest issues.
 
-## Run from Source
+<!-- Capture 2: insert Documentation/Images/third-person-gameplay.png here once it exists.
+Normal third-person play with the robot, environment, and system-integrity HUD visible.
+-->
 
+## Run from Source
 
 ```sh
 git clone https://github.com/MrSpiffy/Failstate.git
